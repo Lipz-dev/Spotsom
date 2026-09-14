@@ -1,0 +1,77 @@
+###
+GET http://localhost:5148/musics/
+
+###
+GET http://localhost:5148/musics/2
+
+
+###
+POST http://localhost:5148/musics/
+Content-Type: application/json
+
+{
+    "name": "Just In The Wind",
+    "author": "Kansas",
+    "genre": "Rock",
+    "album": "Point Of Know Returns",
+    "releaseDate": "1989-04-12",
+    "duration": "00:03:26"
+}
+
+###
+PUT http://localhost:5148/musics/1
+Content-Type: application/json
+{
+    
+    "name": "Baby be mine",
+    "author": "Michael Jackson",
+    "genre": "Pop",
+    "album": "Thriller",
+    "releaseDate": "1982-04-30",
+    "duration": "00:04:20"
+    
+}
+
+###
+DELETE http://localhost:5148/musics/1
+
+
+#-----------------------------------------------
+###
+GET http://localhost:5148/playlists
+
+###
+GET http://localhost:5148/playlists/1
+
+
+### Create playlist
+POST http://localhost:5148/playlists
+Content-Type: application/json
+
+{
+  "name": "sinta o piru",
+  "author": "Felipe",
+  "releaseDate": "2026-08-31"
+}
+
+
+
+### Update name playlist
+PUT http://localhost:5148/playlists/1
+Content-Type: application/json
+
+{
+    "name": "sinta a paz de deus"
+}
+
+### Add music in playlist
+PUT http://localhost:5148/playlists/3/add/2
+
+
+###
+DELETE http://localhost:5148/playlists/1
+
+
+#-------------------------------------------------#
+
+
