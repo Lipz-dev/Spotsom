@@ -4,7 +4,5 @@ using System.ComponentModel.DataAnnotations;
 namespace SpotSom.Api.Dtos;
 
 public record UserUpdateDTO(
-    [Required][StringLength(25)] string Name,
-    IFormFile? ImageCape,
-    DateOnly ReleaseDate
+    [Required][StringLength(25)] string Name
 );

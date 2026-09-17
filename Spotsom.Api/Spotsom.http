@@ -1,4 +1,4 @@
-###
+###-----------------Music-----------------
 GET http://localhost:5148/musics/
 
 ###
@@ -36,42 +36,63 @@ Content-Type: application/json
 DELETE http://localhost:5148/musics/1
 
 
-#-----------------------------------------------
+#--------------PLAYLISTS------------------
 ###
-GET http://localhost:5148/playlists
+GET http://localhost:5148/api/playlists/
 
 ###
-GET http://localhost:5148/playlists/1
-
+GET http://localhost:5148/api/playlists/1
 
 ### Create playlist
-POST http://localhost:5148/playlists
+POST http://localhost:5148/api/playlists/2/create
 Content-Type: application/json
 
 {
-  "name": "sinta o piru",
-  "author": "Felipe",
-  "releaseDate": "2026-08-31"
+  "name": "sinta o piru"
 }
 
-
-
-### Update name playlist
-PUT http://localhost:5148/playlists/1
+### Update name playlist 
+PUT http://localhost:5148/api/playlists/1/edit
 Content-Type: application/json
 
 {
-    "name": "sinta a paz de deus"
+    "name": "sinta a paz"
 }
 
 ### Add music in playlist
-PUT http://localhost:5148/playlists/3/add/2
+PUT http://localhost:5148/api/playlists/3/add/2
+
 
 
 ###
-DELETE http://localhost:5148/playlists/1
+DELETE http://localhost:5148/api/playlists/1
 
 
-#-------------------------------------------------#
+###-----------------------USERS-------------------------#
+GET http://localhost:5148/api/users/
+
+###
+GET  http://localhost:5148/api/users/1
+
+###
+POST http://localhost:5148/api/users/create
+Content-Type: application/json
+
+{
+    "name": "teste1",
+    "releaseDate": "2026-08-31"
+}
+
+###
+PUT http://localhost:5148/api/users/1
+Content-Type: application/json
+
+{
+    "name" : "teste2"
+}
+
+###
+DELETE http://localhost:5148/api/users/1
+
 
 

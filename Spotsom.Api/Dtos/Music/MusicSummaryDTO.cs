@@ -3,12 +3,11 @@ using System.ComponentModel.DataAnnotations;
 namespace SpotSom.Api.Dtos;
 
 public record MusicSummaryDTO(
-    int Id,
-    [Required][StringLength(25)] string Name,
-    [Required] IFormFile ImageCape,
+    [Required][StringLength(30)] string Name,
+    [Required] IFormFile? ImageCape,
+    [Required] TimeSpan Duration,
+    [Required] DateOnly ReleaseDate,
     [Required] List<ArtistSummaryDTO> Artists,
     [Required] List<GenreSummaryDTO> Genres,
-    [Required] AlbumSummaryDTO Album,
-    DateOnly ReleaseDate,
-    TimeOnly Duration
+    [Required] AlbumSummaryDTO Album
 );

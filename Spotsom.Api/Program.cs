@@ -1,4 +1,5 @@
 
+using Spotsom.Api.Endpoints;
 using SpotSom.Api.Data;
 using SpotSom.Api.Endpoints;
 
@@ -10,8 +11,9 @@ builder.Services.AddSqlite<SpotsomContext>(connString);
 
 var app = builder.Build();
 
-app.MapMusicEndpoints();
+//app.MapMusicEndpoints();
 app.MapPlaylistEndpoints();
+app.MapUserEndpoints();
 
 app.MigrationDb();
 

@@ -9,5 +9,5 @@ public record CreateMusicDTO(
     [Required][StringLength(15)] List<GenreSummaryDTO> Genres,
     [Required][StringLength(25)] AlbumSummaryDTO Album,
     DateOnly ReleaseDate,
-    TimeOnly Duration
+    TimeSpan Duration
 );
