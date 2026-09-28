@@ -7,12 +7,11 @@ public class Music
     public int Id { get; set; }
     public required string Name { get; set; }
     //public IFormFile? ImageCape { get; set; }
-    public List<MusicsArtists>? Artists { get; set; }
-    public required int AuthorId { get; set; }
-    public List<Genre>? Genre { get; set; }
-    public required int GenreId { get; set; }
+    public ICollection<MusicsArtists>? Artists { get; set; } = [];
+    //public required List<int> ArtistrId { get; set; }
+    public ICollection<MusicGenres>? Genre { get; set; } = [];
     public Album? Album { get; set; }
-    public required int AlbumId { get; set; }
+    public int AlbumId { get; set; }
     public DateOnly ReleaseDate { get; set; }
     public TimeSpan Duration { get; set; }
 }

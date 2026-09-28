@@ -3,10 +3,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Spotsom.Api.Data.Migrations
+namespace Spotsom.Api.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class InitialMigrate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -22,6 +22,19 @@ namespace Spotsom.Api.Data.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Artists", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Genres",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "INTEGER", nullable: false)
+                        .Annotation("Sqlite:Autoincrement", true),
+                    Name = table.Column<string>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Genres", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -66,7 +79,9 @@ namespace Spotsom.Api.Data.Migrations
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
-                    UserId = table.Column<int>(type: "INTEGER", nullable: false)
+                    UserId = table.Column<int>(type: "INTEGER", nullable: false),
+                    ReleaseDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
+                    Duration = table.Column<TimeOnly>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -86,9 +101,9 @@ namespace Spotsom.Api.Data.Migrations
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
-                    AuthorId = table.Column<int>(type: "INTEGER", nullable: false),
-                    GenreId = table.Column<int>(type: "INTEGER", nullable: false),
                     AlbumId = table.Column<int>(type: "INTEGER", nullable: false),
+                    ReleaseDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
+                    Duration = table.Column<TimeSpan>(type: "TEXT", nullable: false),
                     PlaylistId = table.Column<int>(type: "INTEGER", nullable: true)
                 },
                 constraints: table =>
@@ -108,22 +123,27 @@ namespace Spotsom.Api.Data.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Genres",
+                name: "MusicGenres",
                 columns: table => new
                 {
-                    Id = table.Column<int>(type: "INTEGER", nullable: false)
-                        .Annotation("Sqlite:Autoincrement", true),
-                    Name = table.Column<string>(type: "TEXT", nullable: false),
-                    MusicId = table.Column<int>(type: "INTEGER", nullable: true)
+                    MusicId = table.Column<int>(type: "INTEGER", nullable: false),
+                    GenreIds = table.Column<int>(type: "INTEGER", nullable: false),
+                    GenreId = table.Column<int>(type: "INTEGER", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Genres", x => x.Id);
+                    table.PrimaryKey("PK_MusicGenres", x => new { x.GenreIds, x.MusicId });
                     table.ForeignKey(
-                        name: "FK_Genres_Musics_MusicId",
+                        name: "FK_MusicGenres_Genres_GenreId",
+                        column: x => x.GenreId,
+                        principalTable: "Genres",
+                        principalColumn: "Id");
+                    table.ForeignKey(
+                        name: "FK_MusicGenres_Musics_MusicId",
                         column: x => x.MusicId,
                         principalTable: "Musics",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -150,43 +170,19 @@ namespace Spotsom.Api.Data.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
-            migrationBuilder.CreateTable(
-                name: "MusicGenre",
-                columns: table => new
-                {
-                    MusicId = table.Column<int>(type: "INTEGER", nullable: false),
-                    GenreId = table.Column<int>(type: "INTEGER", nullable: false)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_MusicGenre", x => new { x.GenreId, x.MusicId });
-                    table.ForeignKey(
-                        name: "FK_MusicGenre_Genres_GenreId",
-                        column: x => x.GenreId,
-                        principalTable: "Genres",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                    table.ForeignKey(
-                        name: "FK_MusicGenre_Musics_MusicId",
-                        column: x => x.MusicId,
-                        principalTable: "Musics",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
-                });
-
             migrationBuilder.CreateIndex(
                 name: "IX_Albums_ArtistId",
                 table: "Albums",
                 column: "ArtistId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_Genres_MusicId",
-                table: "Genres",
-                column: "MusicId");
+                name: "IX_MusicGenres_GenreId",
+                table: "MusicGenres",
+                column: "GenreId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_MusicGenre_MusicId",
-                table: "MusicGenre",
+                name: "IX_MusicGenres_MusicId",
+                table: "MusicGenres",
                 column: "MusicId");
 
             migrationBuilder.CreateIndex(
@@ -219,7 +215,7 @@ namespace Spotsom.Api.Data.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "MusicGenre");
+                name: "MusicGenres");
 
             migrationBuilder.DropTable(
                 name: "MusicsArtists");

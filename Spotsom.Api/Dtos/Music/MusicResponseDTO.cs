@@ -1,13 +1,16 @@
 using Microsoft.AspNetCore.Http;
+using SpotSom.Api.Models;
 using System.ComponentModel.DataAnnotations;
+
+
 namespace SpotSom.Api.Dtos;
 
-public record MusicSummaryDTO(
+public record MusicResponseDTO(
     [Required][StringLength(30)] string Name,
-    [Required] IFormFile? ImageCape,
+
     [Required] TimeSpan Duration,
     [Required] DateOnly ReleaseDate,
-    [Required] List<ArtistSummaryDTO> Artists,
-    [Required] List<GenreSummaryDTO> Genres,
-    [Required] AlbumSummaryDTO Album
+    [Required] List<string> Artists,
+    [Required] List<string> Genres,
+    [Required] string Album
 );

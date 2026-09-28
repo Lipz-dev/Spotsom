@@ -5,6 +5,6 @@ namespace SpotSom.Api.Dtos;
 
 public record ArtistCreateDTO(
     [Required][StringLength(25)] string Name,
-    IFormFile? ImageCape,
+    //IFormFile? ImageCape,
     DateOnly ReleaseDate
 );

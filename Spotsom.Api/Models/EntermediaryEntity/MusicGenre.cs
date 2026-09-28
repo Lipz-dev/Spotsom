@@ -1,9 +1,9 @@
 namespace SpotSom.Api.Models;
 
-public class MusicGenre
+public class MusicGenres
 {
-    public required int MusicId { get; set; }
+    public int MusicId { get; set; }
     public Music? Music { get; set; }
-    public required int GenreId { get; set; }
+    public required int GenreIds { get; set; }
     public Genre? Genre { get; set; }
 }

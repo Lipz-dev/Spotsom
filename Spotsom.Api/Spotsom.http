@@ -1,25 +1,53 @@
+###-----------------------USERS-------------------------#
+GET http://localhost:5148/api/users/
+
+###
+GET  http://localhost:5148/api/users/1
+
+###
+POST http://localhost:5148/api/users/create
+Content-Type: application/json
+
+{
+    "name": "teste1",
+    "releaseDate": "2026-08-31"
+}
+
+###
+PUT http://localhost:5148/api/users/2
+Content-Type: application/json
+
+{
+    "name" : "teste2"
+}
+
+###
+DELETE http://localhost:5148/api/users/1
+
+
+
 ###-----------------Music-----------------
-GET http://localhost:5148/musics/
+GET http://localhost:5148/api/musics/
 
 ###
-GET http://localhost:5148/musics/2
+GET http://localhost:5148/api/musics/1
 
 
 ###
-POST http://localhost:5148/musics/
+POST http://localhost:5148/api/musics/create
 Content-Type: application/json
 
 {
     "name": "Just In The Wind",
-    "author": "Kansas",
-    "genre": "Rock",
-    "album": "Point Of Know Returns",
+    "artistIds": [1],
+    "genreIds": [1,2],
+    "albumId": 1,
     "releaseDate": "1989-04-12",
     "duration": "00:03:26"
 }
 
 ###
-PUT http://localhost:5148/musics/1
+PUT http://localhost:5148/api/musics/1
 Content-Type: application/json
 {
     
@@ -33,7 +61,7 @@ Content-Type: application/json
 }
 
 ###
-DELETE http://localhost:5148/musics/1
+DELETE http://localhost:5148/api/musics/1
 
 
 #--------------PLAYLISTS------------------
@@ -44,11 +72,12 @@ GET http://localhost:5148/api/playlists/
 GET http://localhost:5148/api/playlists/1
 
 ### Create playlist
-POST http://localhost:5148/api/playlists/2/create
+POST http://localhost:5148/api/playlists/create
 Content-Type: application/json
 
 {
-  "name": "sinta o piru"
+  "name": "teste444",
+  "userId": 1
 }
 
 ### Update name playlist 
@@ -68,31 +97,86 @@ PUT http://localhost:5148/api/playlists/3/add/2
 DELETE http://localhost:5148/api/playlists/1
 
 
-###-----------------------USERS-------------------------#
-GET http://localhost:5148/api/users/
+### -----------------ALBUMS-----------------
+GET http://localhost:5148/api/albums/
 
 ###
-GET  http://localhost:5148/api/users/1
+GET http://localhost:5148/api/albums/1
 
 ###
-POST http://localhost:5148/api/users/create
+POST http://localhost:5148/api/albums/create
 Content-Type: application/json
 
 {
-    "name": "teste1",
+    "name": "Album Teste",
+    "artistId": 1,
     "releaseDate": "2026-08-31"
 }
 
 ###
-PUT http://localhost:5148/api/users/1
+PUT http://localhost:5148/api/albums/1/edit
 Content-Type: application/json
 
 {
-    "name" : "teste2"
+    "name": "Album Teste Editado",
 }
 
 ###
-DELETE http://localhost:5148/api/users/1
+DELETE http://localhost:5148/api/albums/1
 
 
+
+
+###-----------------ARTISTS-----------------
+GET http://localhost:5148/api/artists/
+
+###
+GET http://localhost:5148/api/artists/1
+
+###
+POST http://localhost:5148/api/artists/create
+Content-Type: application/json
+
+{
+    "name": "Artist Teste",
+    "releaseDate": "2026-08-31"
+}
+
+###
+PUT http://localhost:5148/api/artists/1/edit
+Content-Type: application/json
+
+{
+    "name": "Artist Teste Editado",
+}
+
+###
+DELETE http://localhost:5148/api/artists/1
+
+
+
+###-----------------GENRES-----------------
+GET http://localhost:5148/api/genres/
+
+###
+GET http://localhost:5148/api/genres/1
+
+###
+POST http://localhost:5148/api/genres/create
+Content-Type: application/json
+
+{
+    "name": "Genre Teste"
+}
+
+###
+PUT http://localhost:5148/api/genres/1/edit
+Content-Type: application/json  
+
+{
+    "name": "Genre Teste Editado"
+}
+
+###
+DELETE http://localhost:5148/api/genres/1
 

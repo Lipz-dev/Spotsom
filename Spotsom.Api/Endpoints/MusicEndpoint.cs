@@ -1,86 +1,164 @@
-// using SpotSom.Api.Dtos;
-// using SpotSom.Api.Data;
-// using Microsoft.EntityFrameworkCore;
-// using SpotSom.Api.Models;
+using SpotSom.Api.Dtos;
+using SpotSom.Api.Data;
+using Microsoft.EntityFrameworkCore;
+using SpotSom.Api.Models;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
-// namespace SpotSom.Api.Endpoints
-// {
-//     public static class MusicEndpoints
-//     {
-//         public static void MapMusicEndpoints(this WebApplication app)
-//         {
-//             var group = app.MapGroup("/musics");
-//             const string GetMusicEndPoint = "GetMusic";
+namespace SpotSom.Api.Endpoints;
+
+public static class MusicEndpoint
+{
+    public static IEndpointRouteBuilder MapMusicEndpoint(this IEndpointRouteBuilder endpoints)
+    {
+        var group = endpoints.MapGroup("/api/musics").WithTags("Musics");
+
+        group.MapGet("/", GetAllAsync);
+        group.MapGet("/{id:int}", GetByIdAsync);
+        group.MapPost("/create", CreatedAsync);
+        group.MapPut("/{id:int}/edit/", UpdateAsync);
+        group.MapDelete("/{id:int}", DeleteAsync);
+
+        return endpoints;
+    }
+
+    [HttpGet]
+    private static async Task<Ok<List<MusicResponseDTO>>> GetAllAsync(
+        SpotsomContext db, CancellationToken cancellationToken)
+    {
+        var musics = await db.Musics
+        .Include(m => m.Artists)
+            .ThenInclude(ma => ma.Artist)
+        .Include(g => g.Genre)
+            .ThenInclude(mg => mg.Genre)
+        .Include(a => a.Album).ToListAsync(cancellationToken);
+
+
+        List<MusicResponseDTO> musicResponseDTOs = musics.Select(m => new MusicResponseDTO(
+            m.Name,
+            m.Duration,
+            m.ReleaseDate,
+            m.Artists.Select(a => a.Artist.Name).ToList(),
+            m.Genre.Select(g => g.Genre.Name).ToList(),
+            m.Album.Name)).ToList();
+        return TypedResults.Ok(musicResponseDTOs);
+    }
+
+
+    [HttpGet]
+    private static async Task<Results<Ok<MusicResponseDTO>, NotFound, BadRequest<string>>> GetByIdAsync(
+        int id, SpotsomContext db, CancellationToken cancellationToken)
+    {
+
+        var music = await db.Musics
+        .Include(m => m.Artists).ThenInclude(ma => ma.Artist)
+        .Include(g => g.Genre).ThenInclude(mg => mg.Genre)
+        .Include(a => a.Album)
+        .FirstOrDefaultAsync(m => m.Id == id);
+
+        if (music.Artists == null || music.Genre == null || music.Album == null)
+        {
+            return TypedResults.BadRequest("Erro ao buscar a música. Verifique se os IDs de artistas e gêneros são válidos.");
+        }
+
+        MusicResponseDTO response = new MusicResponseDTO(
+            music.Name,
+            music.Duration,
+            music.ReleaseDate,
+            music.Artists.Select(a => a.Artist.Name).ToList(),
+            music.Genre.Select(g => g.Genre.Name).ToList(),
+            music.Album.Name);
+
+        return music is null ? TypedResults.NotFound() : TypedResults.Ok(response);
+    }
+
+    [HttpPost]
+    private static async Task<Results<Created<MusicResponseDTO>, BadRequest<string>>> CreatedAsync(
+        CreateMusicDTO input, SpotsomContext db, CancellationToken cancellationToken)
+    {
+        var album = await db.Albums.FindAsync([input.AlbumId], cancellationToken);
+        if (album is null)
+        {
+            return TypedResults.BadRequest($"Album {input.AlbumId} não encontrado.");
+        }
+
+        var music = new Music
+        {
+            Name = input.Name,
+            Duration = input.Duration,
+            ReleaseDate = input.ReleaseDate,
+            AlbumId = input.AlbumId
+        };
 
 
 
+        foreach (var artistId in input.ArtistIds)
+        {
+            db.MusicsArtists.Add(new MusicsArtists
+            {
+                Music = music,
+                ArtistsId = artistId,
+                Artist = await db.Artists.FindAsync([artistId], cancellationToken)
+            });
+        }
 
-//             // GET /Musics/
-//             group.MapGet("/", async (SpotsomContext dbContext) => await dbContext.Musics.Select(music => new MusicSummaryDTO
-//             {
+        foreach (var genreId in input.GenreIds)
+        {
+            db.MusicGenres.Add(new MusicGenres
+            {
+                Music = music,
+                GenreIds = genreId,
+                Genre = await db.Genres.FindAsync([genreId], cancellationToken)
+            });
+        }
 
-//             }));
+        db.Musics.Add(music);
+        await db.SaveChangesAsync(cancellationToken);
 
+        if (music.Artists == null || music.Genre == null || music.Album == null)
+        {
+            return TypedResults.BadRequest("Erro ao criar a música. Verifique se os IDs de artistas e gêneros são válidos.");
+        }
 
-//             // {
-//             //     return musics is null ? Results.NotFound() : Results.Ok(musics);
-//             // });
+        MusicResponseDTO response = new MusicResponseDTO(
+            music.Name,
+            music.Duration,
+            music.ReleaseDate,
+            music.Artists.Select(a => a.Artist.Name).ToList(),
+            music.Genre.Select(g => g.Genre.Name).ToList(),
+            music.Album.Name);
 
-//             // GET /Musics/1
-//             group.MapGet("/{id}", (int id) =>
-//             {
-//                 var music = musics.Find(music => music.Id == id);
-//                 return music is null ? Results.NotFound() : Results.Ok(music);
+        var id = music.Id;
+        return TypedResults.Created($"/api/musics/{id}", response);
+    }
 
-//             }).WithName(GetMusicEndPoint);
+    [HttpPut("{id}")]
+    private static async Task<Results<Ok<Music>, NotFound>> UpdateAsync(
+        int id, UpdateMusicDTO input, SpotsomContext db, CancellationToken cancellationToken)
+    {
+        var music = await db.Musics.FindAsync([id], cancellationToken);
+        if (music is null)
+        {
+            return TypedResults.NotFound();
+        }
 
-//             // POST /Musics/
-//             group.MapPost("/", (CreateMusicDTO createMusicDTO) =>
-//             {
-//                 MusicDTO musicDto =
-//                     new
-//                     (musics.Count + 1,
-//                     createMusicDTO.Name,
-//                     createMusicDTO.Artist,
-//                     createMusicDTO.Genre,
-//                     createMusicDTO.Album,
-//                     createMusicDTO.ReleaseDate,
-//                     createMusicDTO.Duration);
+        db.Entry(music).CurrentValues.SetValues(input);
+        await db.SaveChangesAsync(cancellationToken);
+        return TypedResults.Ok(music);
+    }
 
-//                 musics.Add(musicDto);
+    [HttpDelete("{id}")]
+    private static async Task<Results<NoContent, NotFound>> DeleteAsync(
+    int id, SpotsomContext db, CancellationToken cancellationToken)
+    {
+        var music = await db.Musics.FindAsync([id], cancellationToken);
+        if (music is null)
+        {
+            return TypedResults.NotFound();
+        }
 
-//                 return Results.CreatedAtRoute(GetMusicEndPoint, new { id = musicDto.Id }, musicDto);
-//             });
-
-//             group.MapPut("/{id}", (int id, UpdateMusicDTO updateMusicDTO) =>
-//             {
-//                 var index = musics.FindIndex(music => music.Id == id);
-//                 if (index == -1)
-//                 {
-//                     return Results.NotFound();
-//                 }
-
-//                 musics[index] = new(
-//                 index,
-//                 updateMusicDTO.Name,
-//                 updateMusicDTO.Artist,
-//                 updateMusicDTO.Genre,
-//                 updateMusicDTO.Album,
-//                 musics[index].ReleaseDate,
-//                 musics[index].Duration
-//             );
-
-//                 return Results.NoContent();
-
-//             });
-
-//             group.MapDelete("/{id}", (int id) =>
-//             {
-//                 musics.RemoveAll(music => music.Id == id);
-
-//                 return Results.NoContent();
-//             });
-//         }
-
-//     }
-// }
+        db.Musics.Remove(music);
+        await db.SaveChangesAsync(cancellationToken);
+        return TypedResults.NoContent();
+    }
+}

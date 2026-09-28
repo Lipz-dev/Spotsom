@@ -11,7 +11,10 @@ builder.Services.AddSqlite<SpotsomContext>(connString);
 
 var app = builder.Build();
 
-//app.MapMusicEndpoints();
+app.MapArtistEndpoints();
+app.MapAlbumEndpoints();
+app.MapGenreEndpoints();
+app.MapMusicEndpoint(); //!!NÃO CONSIGO CRIAR UMA MUSICA
 app.MapPlaylistEndpoints();
 app.MapUserEndpoints();
 

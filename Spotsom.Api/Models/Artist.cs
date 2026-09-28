@@ -6,6 +6,8 @@ public class Artist
 {
     public int Id { get; set; }
     public required string Name { get; set; }
+    public ICollection<MusicsArtists>? Musics { get; set; } = [];
+
     //public IFormFile? IconArtist { get; set; }
     //!make one image default for icon artist.
 }

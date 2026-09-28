@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SpotSom.Api.Data;
 using SpotSom.Api.Models;
 using SpotSom.Api.Dtos;
+using Microsoft.AspNetCore.Mvc;
 
 namespace Spotsom.Api.Endpoints;
 
@@ -15,16 +16,18 @@ public static class UserEndpoint
         group.MapGet("/", GetAllAsync);
         group.MapGet("/{id:int}", GetByIdAsync);
         group.MapPost("/create", CreateAsync);
-        group.MapPut("/{id:int}", UpdateAsync);
+        group.MapPut("/{id:int}/edit", UpdateAsync);
         group.MapDelete("/{id:int}", DeleteAsync);
 
         return endpoints;
     }
 
+    [HttpGet]
     private static async Task<Ok<List<User>>> GetAllAsync(
         SpotsomContext db, CancellationToken cancellationToken) =>
         TypedResults.Ok(await db.Users.ToListAsync(cancellationToken));
 
+    [HttpGet]
     private static async Task<Results<Ok<User>, NotFound>> GetByIdAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
@@ -32,6 +35,7 @@ public static class UserEndpoint
         return user is null ? TypedResults.NotFound() : TypedResults.Ok(user);
     }
 
+    [HttpPost]
     private static async Task<Created<User>> CreateAsync(
         User user, SpotsomContext db, CancellationToken cancellationToken)
     {
@@ -42,6 +46,7 @@ public static class UserEndpoint
         return TypedResults.Created($"/api/users/{id}", user);
     }
 
+    [HttpPut]
     private static async Task<Results<Ok<User>, NotFound>> UpdateAsync(
         int id, UserUpdateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
@@ -54,6 +59,7 @@ public static class UserEndpoint
         return TypedResults.Ok(user);
     }
 
+    [HttpDelete]
     private static async Task<Results<NoContent, NotFound>> DeleteAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
