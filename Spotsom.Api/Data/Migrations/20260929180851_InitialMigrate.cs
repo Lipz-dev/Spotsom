@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace Spotsom.Api.Migrations
+namespace Spotsom.Api.Data.Migrations
 {
     /// <inheritdoc />
     public partial class InitialMigrate : Migration

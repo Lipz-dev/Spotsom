@@ -1,3 +1,65 @@
+###----------------INITIATION-----------
+POST http://localhost:5148/api/users/create
+Content-Type: application/json
+
+{
+    "name": "teste1",
+    "releaseDate": "2026-08-31"
+}
+
+
+###
+POST http://localhost:5148/api/genres/create
+Content-Type: application/json
+
+{
+    "name": "Genre Teste"
+}
+
+###
+POST http://localhost:5148/api/artists/create
+Content-Type: application/json
+
+{
+    "name": "Artist Teste",
+    "releaseDate": "2026-08-31"
+}
+
+
+###
+POST http://localhost:5148/api/playlists/create
+Content-Type: application/json
+
+{
+  "name": "teste444",
+  "userId": 1
+}
+
+###
+POST http://localhost:5148/api/albums/create
+Content-Type: application/json
+
+{
+    "name": "Album Teste 2",
+    "artistId": 1,
+    "releaseDate": "2026-08-31"
+}
+
+###
+POST http://localhost:5148/api/musics/create
+Content-Type: application/json
+
+{
+    "name": "Just In The Wind",
+    "artistIds": [1],
+    "genreIds": [1,2],
+    "albumId": 1,
+    "releaseDate": "1989-04-12",
+    "duration": "00:03:26"
+}
+
+
+
 ###-----------------------USERS-------------------------#
 GET http://localhost:5148/api/users/
 
@@ -13,8 +75,8 @@ Content-Type: application/json
     "releaseDate": "2026-08-31"
 }
 
-###
-PUT http://localhost:5148/api/users/2
+### 
+PUT http://localhost:5148/api/users/1/edit  
 Content-Type: application/json
 
 {
@@ -38,26 +100,20 @@ POST http://localhost:5148/api/musics/create
 Content-Type: application/json
 
 {
-    "name": "Just In The Wind",
+    "name": "carol carolina",
     "artistIds": [1],
-    "genreIds": [1,2],
+    "genreIds": [1,7],
     "albumId": 1,
     "releaseDate": "1989-04-12",
-    "duration": "00:03:26"
+    "duration": "00:03:20"
 }
 
 ###
-PUT http://localhost:5148/api/musics/1
+PUT http://localhost:5148/api/musics/1/edit
 Content-Type: application/json
+
 {
-    
-    "name": "Baby be mine",
-    "author": "Michael Jackson",
-    "genre": "Pop",
-    "album": "Thriller",
-    "releaseDate": "1982-04-30",
-    "duration": "00:04:20"
-    
+    "name": "Baby"
 }
 
 ###
@@ -76,7 +132,7 @@ POST http://localhost:5148/api/playlists/create
 Content-Type: application/json
 
 {
-  "name": "teste444",
+  "name": "as braba",
   "userId": 1
 }
 
@@ -89,7 +145,12 @@ Content-Type: application/json
 }
 
 ### Add music in playlist
-PUT http://localhost:5148/api/playlists/3/add/2
+PUT http://localhost:5148/api/playlists/2/add
+Content-Type: application/json
+
+{
+    "musicId": 2
+}
 
 
 
@@ -108,17 +169,25 @@ POST http://localhost:5148/api/albums/create
 Content-Type: application/json
 
 {
-    "name": "Album Teste",
+    "name": "DRACULA",
     "artistId": 1,
     "releaseDate": "2026-08-31"
 }
 
 ###
-PUT http://localhost:5148/api/albums/1/edit
+PUT http://localhost:5148/api/albums/3/edit
 Content-Type: application/json
 
 {
-    "name": "Album Teste Editado",
+    "name": "COLORS"
+}
+
+###
+PUT http://localhost:5148/api/albums/2/addmusic
+Content-Type: application/json
+
+{
+    "musicId" : 2
 }
 
 ###
@@ -138,16 +207,16 @@ POST http://localhost:5148/api/artists/create
 Content-Type: application/json
 
 {
-    "name": "Artist Teste",
+    "name": "SABRINA",
     "releaseDate": "2026-08-31"
 }
 
 ###
-PUT http://localhost:5148/api/artists/1/edit
+PUT http://localhost:5148/api/artists/2/edit
 Content-Type: application/json
 
 {
-    "name": "Artist Teste Editado",
+    "name": "travis",
 }
 
 ###
@@ -174,7 +243,7 @@ PUT http://localhost:5148/api/genres/1/edit
 Content-Type: application/json  
 
 {
-    "name": "Genre Teste Editado"
+    "name": "Genre Teste2"
 }
 
 ###

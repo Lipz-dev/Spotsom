@@ -23,40 +23,59 @@ public static class UserEndpoint
     }
 
     [HttpGet]
-    private static async Task<Ok<List<User>>> GetAllAsync(
-        SpotsomContext db, CancellationToken cancellationToken) =>
-        TypedResults.Ok(await db.Users.ToListAsync(cancellationToken));
+    private static async Task<Ok<List<UserResponseDTO>>> GetAllAsync(
+        SpotsomContext db, CancellationToken cancellationToken)
+    {
+        var users = await db.Users.ToListAsync(cancellationToken);
+
+        List<UserResponseDTO> response = users.Select(u => UserResponse(u)).ToList();
+        return TypedResults.Ok(response);
+    }
+
 
     [HttpGet]
-    private static async Task<Results<Ok<User>, NotFound>> GetByIdAsync(
+    private static async Task<Results<Ok<UserResponseDTO>, NotFound>> GetByIdAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
         var user = await db.Users.FindAsync([id], cancellationToken);
-        return user is null ? TypedResults.NotFound() : TypedResults.Ok(user);
+
+        UserResponseDTO response = UserResponse(user);
+        return user is null ? TypedResults.NotFound() : TypedResults.Ok(response);
     }
 
     [HttpPost]
-    private static async Task<Created<User>> CreateAsync(
-        User user, SpotsomContext db, CancellationToken cancellationToken)
+    private static async Task<Created<UserResponseDTO>> CreateAsync(
+        UserCreateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
+        User user = new User
+        {
+            Name = input.Name,
+            ReleaseDate = input.ReleaseDate
+        };
+
         db.Users.Add(user);
         await db.SaveChangesAsync(cancellationToken);
 
+        UserResponseDTO response = UserResponse(user);
+
         var id = user.GetType().GetProperty("Id")?.GetValue(user);
-        return TypedResults.Created($"/api/users/{id}", user);
+        return TypedResults.Created($"/api/users/{id}", response);
     }
 
     [HttpPut]
-    private static async Task<Results<Ok<User>, NotFound>> UpdateAsync(
+    private static async Task<Results<Ok<UserResponseDTO>, NotFound>> UpdateAsync(
         int id, UserUpdateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
         var user = await db.Users.FindAsync([id], cancellationToken);
         if (user is null)
             return TypedResults.NotFound();
 
-        db.Entry(user).CurrentValues.SetValues(input);
+        user.Name = input.Name;
         await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Ok(user);
+
+        UserResponseDTO response = UserResponse(user);
+
+        return TypedResults.Ok(response);
     }
 
     [HttpDelete]
@@ -70,5 +89,13 @@ public static class UserEndpoint
         db.Users.Remove(user);
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.NoContent();
+    }
+
+    private static UserResponseDTO UserResponse(User user)
+    {
+        return new UserResponseDTO(
+            user.Name,
+            user.ReleaseDate
+        );
     }
 }

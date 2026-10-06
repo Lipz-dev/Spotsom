@@ -16,32 +16,44 @@ public static class PlaylistEndpoints
         group.MapGet("/", GetAllAsync);
         group.MapGet("/{id:int}", GetByIdAsync);
         group.MapPost("/create", CreatedAsync);
-        group.MapPut("{id:int}/edit/", UpdateAsync);
+        group.MapPut("/{id:int}/edit/", UpdateAsync);
+        group.MapPut("/{id:int}/add", AddMusicAsync);
         group.MapDelete("/{id:int}", DeleteAsync);
 
         return endpoints;
-        //const string GetPlaylistEndPoint = "GetPlaylist";
     }
 
     [HttpGet]
-    private static async Task<Ok<List<Playlist>>> GetAllAsync(
-    SpotsomContext db, CancellationToken cancellationToken) =>
-    TypedResults.Ok(await db.Playlists
-        .Include(p => p.User)
-        .ToListAsync(cancellationToken));
+    private static async Task<Ok<List<PlaylistResponseDTO>>> GetAllAsync(
+    SpotsomContext db, CancellationToken cancellationToken)
+    {
+        var playlists = await db.Playlists
+            .Include(p => p.User).Include(m => m.Musics)
+            .ToListAsync(cancellationToken);
+
+        List<PlaylistResponseDTO> response = playlists.Select(p => PlaylistResponse(p)).ToList();
+
+        return TypedResults.Ok(response);
+    }
+
 
     [HttpGet]
-    private static async Task<Results<Ok<Playlist>, NotFound>> GetByIdAsync(
+    private static async Task<Results<Ok<PlaylistResponseDTO>, NotFound>> GetByIdAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
+
         var playlist = await db.Playlists
-            .Include(p => p.User)
+            .Include(p => p.User).Include(m => m.Musics)
             .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
-        return playlist is null ? TypedResults.NotFound() : TypedResults.Ok(playlist);
+
+        PlaylistResponseDTO response = PlaylistResponse(playlist);
+
+
+        return playlist is null ? TypedResults.NotFound() : TypedResults.Ok(response);
     }
 
     [HttpPost]
-    private static async Task<Results<Created<Playlist>, NotFound>> CreatedAsync(
+    private static async Task<Results<Created<PlaylistResponseDTO>, NotFound>> CreatedAsync(
     CreatePlaylistDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
         var user = await db.Users.FindAsync([input.UserId], cancellationToken);
@@ -60,25 +72,77 @@ public static class PlaylistEndpoints
             Duration = new TimeOnly(00, 04, 30)
         };
 
+        PlaylistResponseDTO response = PlaylistResponse(playlist);
+
         db.Playlists.Add(playlist);
         await db.SaveChangesAsync(cancellationToken);
 
-        return TypedResults.Created($"/api/playlists/{playlist.Id}", playlist);
+        return TypedResults.Created($"/api/playlists/{playlist.Id}", response);
     }
 
     [HttpPut]
-    private static async Task<Results<Ok<Playlist>, NotFound>> UpdateAsync(
+    private static async Task<Results<Ok<PlaylistResponseDTO>, NotFound>> UpdateAsync(
          int id, UpdatePlaylistDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var playlist = await db.Playlists.FindAsync([id], cancellationToken);
+        var playlist = await db.Playlists.Include(m => m.Musics).FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
         if (playlist is null)
         {
             return TypedResults.NotFound();
         }
 
-        db.Entry(playlist).CurrentValues.SetValues(input);
+        playlist.Name = input.Name;
         await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Ok(playlist);
+
+        PlaylistResponseDTO response = PlaylistResponse(playlist);
+
+        return TypedResults.Ok(response);
+    }
+
+
+    [HttpPut] //ADD MUSIC IN ALBUM
+    private static async Task<Results<Ok<PlaylistResponseDTO>, NotFound, BadRequest>> AddMusicAsync(
+        int id, AddMusicInCollectionDTO input, SpotsomContext db,
+             CancellationToken cancellationToken)
+    {
+        bool duplicate = false;
+        var playlist = await db.Playlists.Include(m => m.Musics).FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+
+
+
+        if (playlist == null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        var musicAdd = await db.Musics.FindAsync([input.MusicId], cancellationToken);
+
+        foreach (var music in playlist.Musics)
+        {
+            if (musicAdd?.Id == music.Id)
+            {
+                duplicate = true;
+            }
+        }
+
+        if (musicAdd == null)
+        {
+            return TypedResults.NotFound();
+        }
+
+        playlist.Musics.Add(musicAdd);
+
+
+
+        if (duplicate)
+        {
+            return TypedResults.BadRequest();
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+        PlaylistResponseDTO response = PlaylistResponse(playlist);
+
+
+        return TypedResults.Ok(response);
     }
 
     [HttpDelete]
@@ -94,6 +158,15 @@ public static class PlaylistEndpoints
         db.Playlists.Remove(playlist);
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.NoContent();
+    }
+
+    private static PlaylistResponseDTO PlaylistResponse(Playlist playlist)
+    {
+        return new PlaylistResponseDTO(
+            playlist.Name,
+            playlist.ReleaseDate,
+            playlist.Musics.Select(m => m.Name).ToList()
+        );
     }
 };
 

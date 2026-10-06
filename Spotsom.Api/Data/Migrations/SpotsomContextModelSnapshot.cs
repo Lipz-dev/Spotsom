@@ -7,7 +7,7 @@ using SpotSom.Api.Data;
 
 #nullable disable
 
-namespace Spotsom.Api.Migrations
+namespace Spotsom.Api.Data.Migrations
 {
     [DbContext(typeof(SpotsomContext))]
     partial class SpotsomContextModelSnapshot : ModelSnapshot

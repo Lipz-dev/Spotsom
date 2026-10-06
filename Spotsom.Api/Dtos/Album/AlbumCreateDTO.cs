@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http;
+using SpotSom.Api.Models;
 using System.ComponentModel.DataAnnotations;
 
 namespace SpotSom.Api.Dtos;

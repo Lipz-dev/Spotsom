@@ -24,46 +24,63 @@ public static class ArtistEndpoint
 
 
     [HttpGet]
-    private static async Task<Ok<List<Artist>>> GetAllAsync(
-        SpotsomContext db, CancellationToken cancellationToken) =>
-        TypedResults.Ok(await db.Artists.ToListAsync(cancellationToken));
+    private static async Task<Ok<List<ArtistResponseDTO>>> GetAllAsync(
+        SpotsomContext db, CancellationToken cancellationToken)
+    {
+        var artists = await db.Artists.Include(m => m.Musics).ThenInclude(ma => ma.Music)
+            .ToListAsync(cancellationToken);
+
+        List<ArtistResponseDTO> response = artists.Select(a => ArtistResponse(a)).ToList();
+
+        return TypedResults.Ok(response);
+    }
+
 
     [HttpGet]
-    private static async Task<Results<Ok<Artist>, NotFound>> GetByIdAsync(
+    private static async Task<Results<Ok<ArtistResponseDTO>, NotFound>> GetByIdAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var artist = db.Artists.FirstOrDefault(m => m.Id == id);
-        return artist is null ? TypedResults.NotFound() : TypedResults.Ok(artist);
+        var artist = await db.Artists.Include(m => m.Musics)
+            .ThenInclude(ma => ma.Music).FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+        ArtistResponseDTO response = ArtistResponse(artist);
+
+        return artist is null ? TypedResults.NotFound() : TypedResults.Ok(response);
     }
 
     [HttpPost]
-    private static async Task<Created<Artist>> CreateAsync(
+    private static async Task<Created<ArtistResponseDTO>> CreateAsync(
         ArtistCreateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
         Artist artist = new Artist
         {
             Name = input.Name
-
         };
 
         db.Artists.Add(artist);
         await db.SaveChangesAsync(cancellationToken);
 
+        ArtistResponseDTO response = ArtistResponse(artist);
+
         var id = artist.GetType().GetProperty("Id")?.GetValue(artist);
-        return TypedResults.Created($"/api/artists/{id}", artist);
+        return TypedResults.Created($"/api/artists/{id}", response);
     }
 
     [HttpPut]
-    private static async Task<Results<Ok<Album>, NotFound>> UpdateAsync(
-        int id, AlbumUpdateDTO input, SpotsomContext db, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<ArtistResponseDTO>, NotFound>> UpdateAsync(
+        int id, ArtistUpdateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var album = await db.Albums.FindAsync([id], cancellationToken);
-        if (album is null)
+        var artist = await db.Artists.Include(m => m.Musics)
+            .ThenInclude(ma => ma.Music).FirstOrDefaultAsync(art => art.Id == id, cancellationToken);
+        if (artist is null)
             return TypedResults.NotFound();
 
-        db.Entry(album).CurrentValues.SetValues(input);
+        artist.Name = input.Name;
         await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Ok(album);
+
+        ArtistResponseDTO response = ArtistResponse(artist);
+
+        return TypedResults.Ok(response);
     }
 
 
@@ -78,5 +95,11 @@ public static class ArtistEndpoint
         db.Albums.Remove(album);
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.NoContent();
+    }
+
+    private static ArtistResponseDTO ArtistResponse(Artist artist)
+    {
+        return new ArtistResponseDTO(artist.Name,
+            artist.Musics.Select(m => m.Music.Name).ToList());
     }
 }

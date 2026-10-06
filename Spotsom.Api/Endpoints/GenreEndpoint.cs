@@ -23,22 +23,35 @@ public static class GenreEndpoint
     }
 
     [HttpGet]
-    private static async Task<Ok<List<Genre>>> GetAllAsync(
-        SpotsomContext db, CancellationToken cancellationToken) =>
-        TypedResults.Ok(await db.Genres.ToListAsync(cancellationToken));
+    private static async Task<Ok<List<GenreResponseDTO>>> GetAllAsync(
+        SpotsomContext db, CancellationToken cancellationToken)
+    {
+        var genres = await db.Genres.Include(m => m.Musics)
+            .ThenInclude(mg => mg.Music).ToListAsync(cancellationToken);
 
+        List<GenreResponseDTO> response = genres.Select(g => GenreResponse(g)
+        ).ToList();
+
+        return TypedResults.Ok(response);
+    }
 
     [HttpGet]
-    private static async Task<Results<Ok<Genre>, NotFound>> GetByIdAsync(
+    private static async Task<Results<Ok<GenreResponseDTO>, NotFound>> GetByIdAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var genre = await db.Genres.FindAsync([id], cancellationToken);
-        return genre is null ? TypedResults.NotFound() : TypedResults.Ok(genre);
+        var genre = await db.Genres.Include(m => m.Musics)
+            .ThenInclude(mg => mg.Music).FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
+
+
+
+        GenreResponseDTO response = GenreResponse(genre);
+
+        return genre is null ? TypedResults.NotFound() : TypedResults.Ok(response);
     }
 
 
     [HttpPost]
-    private static async Task<Created<Genre>> CreateAsync(
+    private static async Task<Created<GenreResponseDTO>> CreateAsync(
         GenreCreateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
         Genre genre = new Genre
@@ -49,22 +62,27 @@ public static class GenreEndpoint
         db.Genres.Add(genre);
         await db.SaveChangesAsync(cancellationToken);
 
+        GenreResponseDTO response = GenreResponse(genre);
+
         var id = genre.GetType().GetProperty("Id")?.GetValue(genre);
-        return TypedResults.Created($"/api/genres/{id}", genre);
+        return TypedResults.Created($"/api/genres/{id}", response);
     }
 
 
     [HttpPut]
-    private static async Task<Results<Ok<Genre>, NotFound>> UpdateAsync(
+    private static async Task<Results<Ok<GenreResponseDTO>, NotFound>> UpdateAsync(
         int id, GenreUpdateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var genre = await db.Genres.FindAsync([id], cancellationToken);
+        var genre = await db.Genres.Include(m => m.Musics).FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
         if (genre is null)
             return TypedResults.NotFound();
 
-        db.Entry(genre).CurrentValues.SetValues(input);
+        genre.Name = input.Name;
         await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Ok(genre);
+
+        GenreResponseDTO response = GenreResponse(genre);
+
+        return TypedResults.Ok(response);
     }
 
 
@@ -79,5 +97,12 @@ public static class GenreEndpoint
         db.Genres.Remove(genre);
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.NoContent();
+    }
+
+
+    private static GenreResponseDTO GenreResponse(Genre genre)
+    {
+        GenreResponseDTO responseDTO = new(genre.Name, genre.Musics.Select(m => m.Music.Name).ToList());
+        return responseDTO;
     }
 }

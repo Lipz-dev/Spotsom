@@ -41,6 +41,7 @@ public static class MusicEndpoint
             m.Artists.Select(a => a.Artist.Name).ToList(),
             m.Genre.Select(g => g.Genre.Name).ToList(),
             m.Album.Name)).ToList();
+
         return TypedResults.Ok(musicResponseDTOs);
     }
 
@@ -54,7 +55,7 @@ public static class MusicEndpoint
         .Include(m => m.Artists).ThenInclude(ma => ma.Artist)
         .Include(g => g.Genre).ThenInclude(mg => mg.Genre)
         .Include(a => a.Album)
-        .FirstOrDefaultAsync(m => m.Id == id);
+        .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
         if (music.Artists == null || music.Genre == null || music.Album == null)
         {
@@ -89,8 +90,6 @@ public static class MusicEndpoint
             ReleaseDate = input.ReleaseDate,
             AlbumId = input.AlbumId
         };
-
-
 
         foreach (var artistId in input.ArtistIds)
         {
@@ -133,18 +132,36 @@ public static class MusicEndpoint
     }
 
     [HttpPut("{id}")]
-    private static async Task<Results<Ok<Music>, NotFound>> UpdateAsync(
+    private static async Task<Results<Ok<MusicResponseDTO>, NotFound>> UpdateAsync(
         int id, UpdateMusicDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var music = await db.Musics.FindAsync([id], cancellationToken);
-        if (music is null)
+        var music = await db.Musics
+        .Include(a => a.Artists)
+            .ThenInclude(am => am.Artist)
+        .Include(al => al.Album)
+        .Include(g => g.Genre)
+            .ThenInclude(gm => gm.Genre).FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
+
+        var albumMus = await db.Albums.FindAsync([music.AlbumId], cancellationToken);
+
+        if (music.Artists == null || music.Artists.Count() < 1)
         {
             return TypedResults.NotFound();
         }
 
-        db.Entry(music).CurrentValues.SetValues(input);
+        music.Name = input.Name;
+
         await db.SaveChangesAsync(cancellationToken);
-        return TypedResults.Ok(music);
+
+        MusicResponseDTO response = new(
+        music.Name,
+        music.Duration,
+        music.ReleaseDate,
+        music.Artists.Select(g => g.Artist.Name).ToList(),
+        music.Genre.Select(g => g.Genre.Name).ToList(),
+        music.Album.Name);
+
+        return TypedResults.Ok(response);
     }
 
     [HttpDelete("{id}")]

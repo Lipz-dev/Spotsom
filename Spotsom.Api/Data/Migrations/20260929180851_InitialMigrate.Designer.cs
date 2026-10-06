@@ -8,10 +8,10 @@ using SpotSom.Api.Data;
 
 #nullable disable
 
-namespace Spotsom.Api.Migrations
+namespace Spotsom.Api.Data.Migrations
 {
     [DbContext(typeof(SpotsomContext))]
-    [Migration("20260925140559_InitialMigrate")]
+    [Migration("20260929180851_InitialMigrate")]
     partial class InitialMigrate
     {
         /// <inheritdoc />

@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SpotSom.Api.Dtos;
 
-public record UserSummaryDTO(
+public record UserResponseDTO(
     [Required][StringLength(25)] string Name,
-    IFormFile? ImageCape,
+    //IFormFile? ImageCape,
     DateOnly ReleaseDate
 );

@@ -4,6 +4,6 @@ using SpotSom.Api.Models;
 namespace SpotSom.Api.Dtos;
 
 public record UpdateMusicDTO(
-    [StringLength(25)] string Name//,
+    [StringLength(30)] string Name//,
                                   //IFormFile CapeImage
 );
