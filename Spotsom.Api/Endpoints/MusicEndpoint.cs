@@ -75,12 +75,45 @@ public static class MusicEndpoint
 
     [HttpPost]
     private static async Task<Results<Created<MusicResponseDTO>, BadRequest<string>>> CreatedAsync(
-        CreateMusicDTO input, SpotsomContext db, CancellationToken cancellationToken)
+            CreateMusicDTO input,
+            SpotsomContext db,
+            CancellationToken cancellationToken)
     {
-        var album = await db.Albums.FindAsync([input.AlbumId], cancellationToken);
+        // Verify if album exist
+        var album = await db.Albums
+            .FindAsync([input.AlbumId], cancellationToken);
+
         if (album is null)
         {
-            return TypedResults.BadRequest($"Album {input.AlbumId} não encontrado.");
+            return TypedResults.BadRequest(
+                $"Álbum {input.AlbumId} não encontrado."
+            );
+        }
+
+        // search all Artists
+        var artists = await db.Artists
+            .Where(a => input.ArtistIds.Contains(a.Id))
+            .ToListAsync(cancellationToken);
+
+        // Verify if Ids Artists sent exist
+        if (artists.Count != input.ArtistIds.Count)
+        {
+            return TypedResults.BadRequest(
+                "Um ou mais artistas informados não existem."
+            );
+        }
+
+        // search all Genres
+        var genres = await db.Genres
+            .Where(g => input.GenreIds.Contains(g.Id))
+            .ToListAsync(cancellationToken);
+
+        // Verify if Ids Genres sent exist
+        if (genres.Count != input.GenreIds.Count)
+        {
+            return TypedResults.BadRequest(
+                "Um ou mais gêneros informados não existem."
+            );
         }
 
         var music = new Music
@@ -91,44 +124,35 @@ public static class MusicEndpoint
             AlbumId = input.AlbumId
         };
 
-        foreach (var artistId in input.ArtistIds)
+        // Create relationship Music <-> Artist
+        foreach (var artist in artists)
         {
-            db.MusicsArtists.Add(new MusicsArtists
+            music.Artists.Add(new MusicsArtists
             {
-                Music = music,
-                ArtistsId = artistId,
-                Artist = await db.Artists.FindAsync([artistId], cancellationToken)
+                ArtistsId = artist.Id,
+                Artist = artist
             });
         }
 
-        foreach (var genreId in input.GenreIds)
+        //Create relationship Music <-> Genre
+        foreach (var genre in genres)
         {
-            db.MusicGenres.Add(new MusicGenres
+            music.Genre.Add(new MusicGenres
             {
-                Music = music,
-                GenreIds = genreId,
-                Genre = await db.Genres.FindAsync([genreId], cancellationToken)
+                GenreIds = genre.Id,
+                Genre = genre
             });
         }
 
         db.Musics.Add(music);
         await db.SaveChangesAsync(cancellationToken);
 
-        if (music.Artists == null || music.Genre == null || music.Album == null)
-        {
-            return TypedResults.BadRequest("Erro ao criar a música. Verifique se os IDs de artistas e gêneros são válidos.");
-        }
+        MusicResponseDTO response = MusicResponse(music);
 
-        MusicResponseDTO response = new MusicResponseDTO(
-            music.Name,
-            music.Duration,
-            music.ReleaseDate,
-            music.Artists.Select(a => a.Artist.Name).ToList(),
-            music.Genre.Select(g => g.Genre.Name).ToList(),
-            music.Album.Name);
-
-        var id = music.Id;
-        return TypedResults.Created($"/api/musics/{id}", response);
+        return TypedResults.Created(
+            $"/api/musics/{music.Id}",
+            response
+        );
     }
 
     [HttpPut("{id}")]
@@ -153,13 +177,7 @@ public static class MusicEndpoint
 
         await db.SaveChangesAsync(cancellationToken);
 
-        MusicResponseDTO response = new(
-        music.Name,
-        music.Duration,
-        music.ReleaseDate,
-        music.Artists.Select(g => g.Artist.Name).ToList(),
-        music.Genre.Select(g => g.Genre.Name).ToList(),
-        music.Album.Name);
+        MusicResponseDTO response = MusicResponse(music);
 
         return TypedResults.Ok(response);
     }
@@ -177,5 +195,18 @@ public static class MusicEndpoint
         db.Musics.Remove(music);
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.NoContent();
+    }
+
+    private static MusicResponseDTO MusicResponse(Music music)
+    {
+        return new MusicResponseDTO
+        (
+        music.Name,
+        music.Duration,
+        music.ReleaseDate,
+        music.Artists.Select(g => g.Artist.Name).ToList(),
+        music.Genre.Select(g => g.Genre.Name).ToList(),
+        music.Album.Name
+        );
     }
 }

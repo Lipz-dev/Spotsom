@@ -43,30 +43,36 @@ public static class AlbumEndpoint
     }
 
     [HttpGet]
-    private static async Task<Results<Ok<AlbumResponseDTO>, NotFound>> GetByIdAsync(
+    private static async Task<Results<Ok<AlbumResponseDTO>, NotFound<string>>> GetByIdAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
         var album = db.Albums.Include(a => a.Artist)
         .Include(m => m.Musics).FirstOrDefault(m => m.Id == id);
 
-        AlbumResponseDTO response = new AlbumResponseDTO(
-            album.Name,
-            album.Musics.Select(m => m.Name).ToList(),
-            album.Artist.Name,
-            album.ReleaseDate
-        );
-        return album is null ? TypedResults.NotFound() : TypedResults.Ok(response);
+        if (album is null)
+        {
+            return TypedResults.NotFound($"Album {id} não encontrado.");
+        }
+
+        AlbumResponseDTO response = AlbumResponse(album);
+        return TypedResults.Ok(response);
     }
 
     [HttpPost]
-    private static async Task<Results<Created<AlbumResponseDTO>, BadRequest>> CreateAsync(
+    private static async Task<Results<Created<AlbumResponseDTO>, NotFound<string>, BadRequest>> CreateAsync(
         AlbumCreateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
+        var artistsAl = await db.Artists.FindAsync([input.ArtistId], cancellationToken);
+
+        if (artistsAl is null)
+        {
+            return TypedResults.NotFound($"Artista {input.ArtistId} do album não encontrado.");
+        }
 
         Album album = new Album
         {
             Name = input.Name,
-            Artist = await db.Artists.FindAsync([input.ArtistId], cancellationToken),
+            Artist = artistsAl,
             ArtistId = input.ArtistId,
             ReleaseDate = input.ReleaseDate
         };
@@ -84,11 +90,7 @@ public static class AlbumEndpoint
         await db.SaveChangesAsync(cancellationToken);
 
 
-        AlbumResponseDTO albumResponseDTO = new(
-            album.Name,
-            [],
-            album.Artist.Name,
-            album.ReleaseDate);
+        AlbumResponseDTO albumResponseDTO = AlbumResponse(album);
 
         int id = album.Id;
         return TypedResults.Created($"/api/albums/{id}", albumResponseDTO);
@@ -99,7 +101,8 @@ public static class AlbumEndpoint
     private static async Task<Results<Ok<AlbumResponseDTO>, NotFound>> UpdateAsync(
         int id, AlbumUpdateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var album = await db.Albums.Include(m => m.Musics).Include(a => a.Artist).FirstOrDefaultAsync(al => al.Id == id, cancellationToken);
+        var album = await db.Albums.Include(m => m.Musics)
+        .Include(a => a.Artist).FirstOrDefaultAsync(al => al.Id == id, cancellationToken);
 
         if (album is null)
         {
@@ -109,28 +112,27 @@ public static class AlbumEndpoint
         album.Name = input.Name;
 
         await db.SaveChangesAsync(cancellationToken);
-        AlbumResponseDTO response = new(
-            album.Name,
-            album.Musics.Select(m => m.Name).ToList(),
-            album.Artist.Name,
-            album.ReleaseDate
-        );
+        AlbumResponseDTO response = AlbumResponse(album);
         return TypedResults.Ok(response);
 
     }
 
     [HttpPut] //ADD MUSIC IN ALBUM
-    private static async Task<Results<Ok<AlbumResponseDTO>, NotFound, BadRequest>> AddMusicAsync(
+    private static async Task<Results<Ok<AlbumResponseDTO>, NotFound<string>, BadRequest<string>>> AddMusicAsync(
         int id, AddMusicInCollectionDTO input, SpotsomContext db
         , CancellationToken cancellationToken)
     {
         bool duplicate = false;
-        var album = await db.Albums.Include(a => a.Artist).ThenInclude(am => am.Musics)
-            .Include(m => m.Musics).FirstOrDefaultAsync(al => al.Id == id, cancellationToken);
+        var album = await db.Albums.Include(a => a.Artist)
+            .Include(m => m.Musics).ThenInclude(ma => ma.Artists)
+            .FirstOrDefaultAsync(al => al.Id == id, cancellationToken);
 
         var musicAdd = await db.Musics.FindAsync([input.MusicId], cancellationToken);
 
-
+        if (album is null || musicAdd is null)
+        {
+            return TypedResults.NotFound("album or musicAdd not found.");
+        }
 
         foreach (var music in album.Musics)
         {
@@ -140,24 +142,13 @@ public static class AlbumEndpoint
             }
         }
 
-
-        if (album == null || musicAdd == null)
-        {
-            TypedResults.BadRequest("album or music or artistAl not exist");
-        }
-
         album.Musics.Add(musicAdd);
 
-        AlbumResponseDTO response = new(
-        album.Name,
-        album.Musics.Select(m => m.Name).ToList(),
-        album.Artist.Name,
-        album.ReleaseDate
-        );
+        AlbumResponseDTO response = AlbumResponse(album);
 
         if (duplicate)
         {
-            return TypedResults.BadRequest();
+            return TypedResults.BadRequest("esta musica já está dentro do album, coloque outra");
         }
 
         await db.SaveChangesAsync(cancellationToken);

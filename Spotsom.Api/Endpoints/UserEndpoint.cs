@@ -68,7 +68,10 @@ public static class UserEndpoint
     {
         var user = await db.Users.FindAsync([id], cancellationToken);
         if (user is null)
+        {
             return TypedResults.NotFound();
+        }
+
 
         user.Name = input.Name;
         await db.SaveChangesAsync(cancellationToken);
@@ -84,7 +87,10 @@ public static class UserEndpoint
     {
         var user = await db.Users.FindAsync([id], cancellationToken);
         if (user is null)
+        {
             return TypedResults.NotFound();
+        }
+
 
         db.Users.Remove(user);
         await db.SaveChangesAsync(cancellationToken);

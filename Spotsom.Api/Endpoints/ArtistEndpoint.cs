@@ -27,7 +27,9 @@ public static class ArtistEndpoint
     private static async Task<Ok<List<ArtistResponseDTO>>> GetAllAsync(
         SpotsomContext db, CancellationToken cancellationToken)
     {
-        var artists = await db.Artists.Include(m => m.Musics).ThenInclude(ma => ma.Music)
+
+        var artists = await db.Artists.Include(m => m.Musics)
+                .ThenInclude(ma => ma.Music)
             .ToListAsync(cancellationToken);
 
         List<ArtistResponseDTO> response = artists.Select(a => ArtistResponse(a)).ToList();
@@ -37,15 +39,20 @@ public static class ArtistEndpoint
 
 
     [HttpGet]
-    private static async Task<Results<Ok<ArtistResponseDTO>, NotFound>> GetByIdAsync(
+    private static async Task<Results<Ok<ArtistResponseDTO>, NotFound<string>>> GetByIdAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
         var artist = await db.Artists.Include(m => m.Musics)
             .ThenInclude(ma => ma.Music).FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
 
+        if (artist is null)
+        {
+            return TypedResults.NotFound($"artist {id} não encontrado.");
+        }
+
         ArtistResponseDTO response = ArtistResponse(artist);
 
-        return artist is null ? TypedResults.NotFound() : TypedResults.Ok(response);
+        return TypedResults.Ok(response);
     }
 
     [HttpPost]
@@ -99,7 +106,12 @@ public static class ArtistEndpoint
 
     private static ArtistResponseDTO ArtistResponse(Artist artist)
     {
+        var musics = artist.Musics.Select(m => m.Music).ToList();
+
+
+
         return new ArtistResponseDTO(artist.Name,
-            artist.Musics.Select(m => m.Music.Name).ToList());
+            musics.Select(m => m.Name).ToList()
+            );
     }
 }
