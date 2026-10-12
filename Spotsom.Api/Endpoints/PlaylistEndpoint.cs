@@ -4,6 +4,7 @@ using SpotSom.Api.Data;
 using SpotSom.Api.Models;
 using SpotSom.Api.Dtos;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace SpotSom.Api.Endpoints;
 
@@ -13,7 +14,7 @@ public static class PlaylistEndpoints
     {
         var group = endpoints.MapGroup("/api/playlists").WithTags("Playlists");
 
-        group.MapGet("/", GetAllAsync);
+        group.MapGet("/page={page:int}/size={pageSize:int}", GetAllAsync);
         group.MapGet("/{id:int}", GetByIdAsync);
         group.MapPost("/create", CreatedAsync);
         group.MapPut("/{id:int}/edit/", UpdateAsync);
@@ -24,21 +25,36 @@ public static class PlaylistEndpoints
     }
 
     [HttpGet]
-    private static async Task<Ok<List<PlaylistResponseDTO>>> GetAllAsync(
-    SpotsomContext db, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<PaginetedDto<PlaylistResponseDTO>>, NotFound<string>>> GetAllAsync(
+    int page, int pageSize, SpotsomContext db, CancellationToken cancellationToken)
     {
+        if (await db.Playlists.CountAsync(cancellationToken) <= 0)
+        {
+            return TypedResults.NotFound("you not create nothing playlist");
+        }
         var playlists = await db.Playlists
+            .OrderBy(p => p.Name)
+            .Skip((page - 1) * pageSize).Take(pageSize)
             .Include(p => p.User).Include(m => m.Musics)
             .ToListAsync(cancellationToken);
 
-        List<PlaylistResponseDTO> response = playlists.Select(p => PlaylistResponse(p)).ToList();
+        int totalItems = await db.Playlists.CountAsync(cancellationToken);
+        int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+
+        var response = new PaginetedDto<PlaylistResponseDTO>(
+            playlists.Select(p => PlaylistResponse(p)).ToList(),
+            page,
+            pageSize,
+            totalItems,
+            totalPages
+            );
 
         return TypedResults.Ok(response);
     }
 
 
     [HttpGet]
-    private static async Task<Results<Ok<PlaylistResponseDTO>, NotFound>> GetByIdAsync(
+    private static async Task<Results<Ok<PlaylistResponseDTO>, NotFound<string>>> GetByIdAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
 
@@ -46,10 +62,15 @@ public static class PlaylistEndpoints
             .Include(p => p.User).Include(m => m.Musics)
             .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
+        if (playlist is null)
+        {
+            return TypedResults.NotFound($"Playlist {id} not found.");
+        }
+
         PlaylistResponseDTO response = PlaylistResponse(playlist);
 
 
-        return playlist is null ? TypedResults.NotFound() : TypedResults.Ok(response);
+        return TypedResults.Ok(response);
     }
 
     [HttpPost]

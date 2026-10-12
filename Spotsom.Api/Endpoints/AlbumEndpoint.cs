@@ -13,7 +13,7 @@ public static class AlbumEndpoint
     {
         var group = endpoints.MapGroup("/api/albums").WithTags("Albums");
 
-        group.MapGet("/", GetAllAsync);
+        group.MapGet("/page={page:int}/size={pageSize:int}", GetAllAsync);
         group.MapGet("/{id:int}", GetByIdAsync);
 
         group.MapPost("/create", CreateAsync);
@@ -27,19 +27,44 @@ public static class AlbumEndpoint
     }
 
     [HttpGet]
-    private static async Task<Ok<List<AlbumResponseDTO>>> GetAllAsync(
-        SpotsomContext db, CancellationToken cancellationToken)
+    private static async Task<Results<Ok<PaginetedDto<AlbumResponseDTO>>, BadRequest<string>>> GetAllAsync(
+        int page, int pageSize, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var albums = await db.Albums.Include(a => a.Artist)
-        .Include(m => m.Musics).ToListAsync(cancellationToken);
+        if (page >= 1 && pageSize >= 1)
+        {
+            page = page;
+            pageSize = pageSize;
+        }
+        else
+        {
+            return TypedResults.BadRequest("page e size is null.");
+        }
 
-        List<AlbumResponseDTO> albumResponseDTO = albums.Select(al => new AlbumResponseDTO(
-            al.Name,
-            al.Musics.Select(m => m.Name).ToList(),
-            al.Artist.Name,
-            al.ReleaseDate)
-        ).ToList();
-        return TypedResults.Ok(albumResponseDTO);
+        var albums = await db.Albums.OrderBy(a => a.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize).Include(a => a.Artist)
+            .Include(m => m.Musics).ToListAsync(cancellationToken);
+
+        int totalItems = await db.Albums.CountAsync(cancellationToken);
+        int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+
+
+        var response = new PaginetedDto<AlbumResponseDTO>(
+            albums.Select(m => AlbumResponse(m)).ToList(),
+            page,
+            pageSize,
+            totalItems,
+            totalPages
+        );
+
+        // List<AlbumResponseDTO> albumResponseDTO = albums.Select(al => new AlbumResponseDTO(
+        //     al.Name,
+        //     al.Musics.Select(m => m.Name).ToList(),
+        //     al.Artist.Name,
+        //     al.ReleaseDate)
+        // ).ToList();
+
+        return TypedResults.Ok(response);
     }
 
     [HttpGet]
@@ -59,7 +84,7 @@ public static class AlbumEndpoint
     }
 
     [HttpPost]
-    private static async Task<Results<Created<AlbumResponseDTO>, NotFound<string>, BadRequest>> CreateAsync(
+    private static async Task<Results<Created<AlbumResponseDTO>, NotFound<string>, BadRequest<string>>> CreateAsync(
         AlbumCreateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
         var artistsAl = await db.Artists.FindAsync([input.ArtistId], cancellationToken);
@@ -74,16 +99,19 @@ public static class AlbumEndpoint
             Name = input.Name,
             Artist = artistsAl,
             ArtistId = input.ArtistId,
-            ReleaseDate = input.ReleaseDate
+            ReleaseDate = DateOnly.FromDateTime(DateTime.UtcNow)
         };
 
+        if (album is null)
+        {
+            return TypedResults.BadRequest("Incorrect entry for album creation.");
+        }
 
-        //! verification test
         var artistAlbum = await db.Artists.FindAsync([album.ArtistId], cancellationToken);
 
         if (artistAlbum == null)
         {
-            TypedResults.BadRequest("invalid input! artist is null");
+            return TypedResults.BadRequest("invalid input! artist is null.");
         }
 
         db.Albums.Add(album);
@@ -98,7 +126,7 @@ public static class AlbumEndpoint
 
 
     [HttpPut]
-    private static async Task<Results<Ok<AlbumResponseDTO>, NotFound>> UpdateAsync(
+    private static async Task<Results<Ok<AlbumResponseDTO>, NotFound<string>>> UpdateAsync(
         int id, AlbumUpdateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
         var album = await db.Albums.Include(m => m.Musics)
@@ -106,7 +134,7 @@ public static class AlbumEndpoint
 
         if (album is null)
         {
-            return TypedResults.NotFound();
+            return TypedResults.NotFound($"Album {id} not found.");
         }
 
         album.Name = input.Name;
@@ -114,7 +142,6 @@ public static class AlbumEndpoint
         await db.SaveChangesAsync(cancellationToken);
         AlbumResponseDTO response = AlbumResponse(album);
         return TypedResults.Ok(response);
-
     }
 
     [HttpPut] //ADD MUSIC IN ALBUM
@@ -158,12 +185,15 @@ public static class AlbumEndpoint
 
 
     [HttpDelete]
-    private static async Task<Results<NoContent, NotFound>> DeleteAsync(
+    private static async Task<Results<NoContent, NotFound<string>>> DeleteAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
         var album = await db.Albums.FindAsync([id], cancellationToken);
         if (album is null)
-            return TypedResults.NotFound();
+        {
+            return TypedResults.NotFound($"Album {id} não encontrado.");
+        }
+
 
         db.Albums.Remove(album);
         await db.SaveChangesAsync(cancellationToken);

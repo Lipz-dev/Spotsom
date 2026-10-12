@@ -13,7 +13,7 @@ public static class MusicEndpoint
     {
         var group = endpoints.MapGroup("/api/musics").WithTags("Musics");
 
-        group.MapGet("/", GetAllAsync);
+        group.MapGet("/page={page:int}/size={pageSize:int}", GetAllAsync);
         group.MapGet("/{id:int}", GetByIdAsync);
         group.MapPost("/create", CreatedAsync);
         group.MapPut("/{id:int}/edit/", UpdateAsync);
@@ -23,31 +23,42 @@ public static class MusicEndpoint
     }
 
     [HttpGet]
-    private static async Task<Ok<List<MusicResponseDTO>>> GetAllAsync(
+    private static async Task<Results<Ok<PaginetedDto<MusicResponseDTO>>, NotFound<string>>> GetAllAsync(
+        int page, int pageSize,
         SpotsomContext db, CancellationToken cancellationToken)
     {
+        if (await db.Musics.CountAsync() < 1)
+        {
+            return TypedResults.NotFound("Nothing music added");
+        }
+
         var musics = await db.Musics
+        .OrderBy(m => m.Name)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
         .Include(m => m.Artists)
             .ThenInclude(ma => ma.Artist)
         .Include(g => g.Genre)
             .ThenInclude(mg => mg.Genre)
         .Include(a => a.Album).ToListAsync(cancellationToken);
 
+        int totalItems = await db.Musics.CountAsync(cancellationToken);
+        int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
 
-        List<MusicResponseDTO> musicResponseDTOs = musics.Select(m => new MusicResponseDTO(
-            m.Name,
-            m.Duration,
-            m.ReleaseDate,
-            m.Artists.Select(a => a.Artist.Name).ToList(),
-            m.Genre.Select(g => g.Genre.Name).ToList(),
-            m.Album.Name)).ToList();
+        var response = new PaginetedDto<MusicResponseDTO>(
+            musics.Select(m => MusicResponse(m)).ToList(),
+            page,
+            pageSize,
+            totalItems,
+            totalPages
+        );
 
-        return TypedResults.Ok(musicResponseDTOs);
+        return TypedResults.Ok(response);
     }
 
 
     [HttpGet]
-    private static async Task<Results<Ok<MusicResponseDTO>, NotFound, BadRequest<string>>> GetByIdAsync(
+    private static async Task<Results<Ok<MusicResponseDTO>, NotFound<string>, BadRequest<string>>> GetByIdAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
 
@@ -57,20 +68,19 @@ public static class MusicEndpoint
         .Include(a => a.Album)
         .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
+        if (music is null)
+        {
+            return TypedResults.NotFound($"Music {id} not found.");
+        }
+
         if (music.Artists == null || music.Genre == null || music.Album == null)
         {
             return TypedResults.BadRequest("Erro ao buscar a música. Verifique se os IDs de artistas e gêneros são válidos.");
         }
 
-        MusicResponseDTO response = new MusicResponseDTO(
-            music.Name,
-            music.Duration,
-            music.ReleaseDate,
-            music.Artists.Select(a => a.Artist.Name).ToList(),
-            music.Genre.Select(g => g.Genre.Name).ToList(),
-            music.Album.Name);
+        MusicResponseDTO response = MusicResponse(music);
 
-        return music is null ? TypedResults.NotFound() : TypedResults.Ok(response);
+        return TypedResults.Ok(response);
     }
 
     [HttpPost]

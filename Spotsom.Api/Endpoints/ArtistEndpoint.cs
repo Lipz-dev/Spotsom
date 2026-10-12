@@ -4,6 +4,7 @@ using SpotSom.Api.Data;
 using SpotSom.Api.Models;
 using SpotSom.Api.Dtos;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Spotsom.Api.Endpoints;
 
@@ -13,7 +14,7 @@ public static class ArtistEndpoint
     {
         var group = endpoints.MapGroup("/api/artists").WithTags("Artists");
 
-        group.MapGet("/", GetAllAsync);
+        group.MapGet("/page={page:int}/size={pageSize:int}", GetAllAsync);
         group.MapGet("/{id:int}", GetByIdAsync);
         group.MapPost("/create", CreateAsync);
         group.MapPut("/{id:int}/edit", UpdateAsync);
@@ -24,15 +25,28 @@ public static class ArtistEndpoint
 
 
     [HttpGet]
-    private static async Task<Ok<List<ArtistResponseDTO>>> GetAllAsync(
+    private static async Task<Ok<PaginetedDto<ArtistResponseDTO>>> GetAllAsync(
+        int page, int pageSize,
         SpotsomContext db, CancellationToken cancellationToken)
     {
 
-        var artists = await db.Artists.Include(m => m.Musics)
+        var artists = await db.Artists.OrderBy(m => m.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Include(m => m.Musics)
                 .ThenInclude(ma => ma.Music)
             .ToListAsync(cancellationToken);
 
-        List<ArtistResponseDTO> response = artists.Select(a => ArtistResponse(a)).ToList();
+        int totalItems = await db.Artists.CountAsync(cancellationToken);
+        int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
+
+        var response = new PaginetedDto<ArtistResponseDTO>(
+            artists.Select(m => ArtistResponse(m)).ToList(),
+            page,
+            pageSize,
+            totalItems,
+            totalPages
+        );
 
         return TypedResults.Ok(response);
     }
@@ -74,13 +88,15 @@ public static class ArtistEndpoint
     }
 
     [HttpPut]
-    private static async Task<Results<Ok<ArtistResponseDTO>, NotFound>> UpdateAsync(
+    private static async Task<Results<Ok<ArtistResponseDTO>, NotFound<string>>> UpdateAsync(
         int id, ArtistUpdateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
         var artist = await db.Artists.Include(m => m.Musics)
             .ThenInclude(ma => ma.Music).FirstOrDefaultAsync(art => art.Id == id, cancellationToken);
         if (artist is null)
-            return TypedResults.NotFound();
+        {
+            return TypedResults.NotFound($"Artist {id} not found.");
+        }
 
         artist.Name = input.Name;
         await db.SaveChangesAsync(cancellationToken);
@@ -95,11 +111,11 @@ public static class ArtistEndpoint
     private static async Task<Results<NoContent, NotFound>> DeleteAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var album = await db.Albums.FindAsync([id], cancellationToken);
-        if (album is null)
+        var artist = await db.Artists.FindAsync([id], cancellationToken);
+        if (artist is null)
             return TypedResults.NotFound();
 
-        db.Albums.Remove(album);
+        db.Artists.Remove(artist);
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.NoContent();
     }

@@ -13,7 +13,7 @@ public static class GenreEndpoint
     {
         var group = endpoints.MapGroup("/api/genres").WithTags("Genres");
 
-        group.MapGet("/", GetAllAsync);
+        group.MapGet("/page={page:int}/size={pageSize:int}", GetAllAsync);
         group.MapGet("/{id:int}", GetByIdAsync);
         group.MapPost("/create", CreateAsync);
         group.MapPut("/{id:int}/edit", UpdateAsync);
@@ -23,14 +23,23 @@ public static class GenreEndpoint
     }
 
     [HttpGet]
-    private static async Task<Ok<List<GenreResponseDTO>>> GetAllAsync(
-        SpotsomContext db, CancellationToken cancellationToken)
+    private static async Task<Ok<PaginetedDto<GenreResponseDTO>>> GetAllAsync(
+        int page, int pageSize, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var genres = await db.Genres.Include(m => m.Musics)
+        var genres = await db.Genres.OrderBy(g => g.Name)
+        .Take(pageSize * page)
+        .Include(m => m.Musics)
             .ThenInclude(mg => mg.Music).ToListAsync(cancellationToken);
 
-        List<GenreResponseDTO> response = genres.Select(g => GenreResponse(g)
-        ).ToList();
+        int totalItems = await db.Genres.CountAsync(cancellationToken);
+
+
+        var response = new PaginetedDto<GenreResponseDTO>(genres.Select(g => GenreResponse(g)
+        ).ToList(),
+        page,
+        pageSize,
+        totalItems,
+        0);
 
         return TypedResults.Ok(response);
     }
@@ -42,8 +51,6 @@ public static class GenreEndpoint
         var genre = await db.Genres.Include(m => m.Musics)
             .ThenInclude(mg => mg.Music).FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
 
-
-
         GenreResponseDTO response = GenreResponse(genre);
 
         return genre is null ? TypedResults.NotFound() : TypedResults.Ok(response);
@@ -54,7 +61,7 @@ public static class GenreEndpoint
     private static async Task<Created<GenreResponseDTO>> CreateAsync(
         GenreCreateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
-        Genre genre = new Genre
+        Genre genre = new()
         {
             Name = input.Name
         };
