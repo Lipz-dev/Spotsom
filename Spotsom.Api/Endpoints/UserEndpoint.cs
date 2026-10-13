@@ -27,10 +27,6 @@ public static class UserEndpoint
     private static async Task<Results<Ok<PaginetedDto<UserResponseDTO>>, NotFound<string>>> GetAllAsync(
         int page, int pageSize, SpotsomContext db, CancellationToken cancellationToken)
     {
-        if (await db.Users.CountAsync(cancellationToken) <= 0)
-        {
-            return TypedResults.NotFound("No Users Created");
-        }
         var users = await db.Users.OrderBy(u => u.Id)
             .Take(pageSize * page)
             .ToListAsync(cancellationToken);
@@ -45,7 +41,7 @@ public static class UserEndpoint
             totalItems,
             totalPages);
 
-        return TypedResults.Ok(response);
+        return users.Count() <= 0 ? TypedResults.NotFound("No Users Created") : TypedResults.Ok(response);
     }
 
 
@@ -115,13 +111,13 @@ public static class UserEndpoint
     }
 
     [HttpDelete]
-    private static async Task<Results<NoContent, NotFound>> DeleteAsync(
+    private static async Task<Results<NoContent, NotFound<string>>> DeleteAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
         var user = await db.Users.FindAsync([id], cancellationToken);
         if (user is null)
         {
-            return TypedResults.NotFound();
+            return TypedResults.NotFound($"User {id} not found.");
         }
 
 

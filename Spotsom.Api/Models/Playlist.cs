@@ -9,7 +9,7 @@ public class Playlist
     public required string Name { get; set; }
     public User? User { get; set; }
     public required int UserId { get; set; }
-    public List<Music>? Musics { get; set; }
+    public List<Music> Musics { get; set; } = [];
     public DateOnly ReleaseDate { get; set; }
     public TimeOnly Duration { get; set; }
 }

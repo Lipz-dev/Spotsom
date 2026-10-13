@@ -60,7 +60,7 @@ Content-Type: application/json
 
 
 ###-----------------------USERS-------------------------#
-GET http://localhost:5148/api/users/
+GET http://localhost:5148/api/users/page=3/size=2
 
 ###
 GET  http://localhost:5148/api/users/1
@@ -70,8 +70,7 @@ POST http://localhost:5148/api/users/create
 Content-Type: application/json
 
 {
-    "name": "teste2",
-    "releaseDate": "2026-08-31"
+    "name": "teste5"
 }
 
 ### 

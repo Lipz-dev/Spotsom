@@ -130,7 +130,7 @@ public static class PlaylistEndpoints
 
 
 
-        if (playlist == null)
+        if (playlist is null)
         {
             return TypedResults.NotFound();
         }
@@ -145,14 +145,12 @@ public static class PlaylistEndpoints
             }
         }
 
-        if (musicAdd == null)
+        if (musicAdd is null)
         {
             return TypedResults.NotFound();
         }
 
         playlist.Musics.Add(musicAdd);
-
-
 
         if (duplicate)
         {
@@ -167,13 +165,13 @@ public static class PlaylistEndpoints
     }
 
     [HttpDelete]
-    private static async Task<Results<NoContent, NotFound>> DeleteAsync(
+    private static async Task<Results<NoContent, NotFound<string>>> DeleteAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
         var playlist = await db.Playlists.FindAsync([id], cancellationToken);
         if (playlist is null)
         {
-            return TypedResults.NotFound();
+            return TypedResults.NotFound($"Playlist {id} not found.");
         }
 
         db.Playlists.Remove(playlist);

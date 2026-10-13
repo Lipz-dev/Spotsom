@@ -45,7 +45,7 @@ public static class GenreEndpoint
     }
 
     [HttpGet]
-    private static async Task<Results<Ok<GenreResponseDTO>, NotFound>> GetByIdAsync(
+    private static async Task<Results<Ok<GenreResponseDTO>, NotFound<string>>> GetByIdAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
         var genre = await db.Genres.Include(m => m.Musics)
@@ -53,18 +53,30 @@ public static class GenreEndpoint
 
         GenreResponseDTO response = GenreResponse(genre);
 
-        return genre is null ? TypedResults.NotFound() : TypedResults.Ok(response);
+        return genre is null ? TypedResults.NotFound($"Genre {id} not found.") : TypedResults.Ok(response);
     }
 
 
     [HttpPost]
-    private static async Task<Created<GenreResponseDTO>> CreateAsync(
+    private static async Task<Results<Created<GenreResponseDTO>, BadRequest<string>>> CreateAsync(
         GenreCreateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
         Genre genre = new()
         {
             Name = input.Name
         };
+
+
+        if (genre is not null)
+        {
+            var genreTeste = await db.Genres.Select(g => g.Name.ToLower()).ToListAsync(cancellationToken);
+            var genreFilter = genreTeste.Where(g => g == input.Name.ToLower());
+
+            if (genreFilter.Count() > 0)
+            {
+                return TypedResults.BadRequest($"Genre {input.Name} already exists.");
+            }
+        }
 
         db.Genres.Add(genre);
         await db.SaveChangesAsync(cancellationToken);
@@ -77,12 +89,12 @@ public static class GenreEndpoint
 
 
     [HttpPut]
-    private static async Task<Results<Ok<GenreResponseDTO>, NotFound>> UpdateAsync(
+    private static async Task<Results<Ok<GenreResponseDTO>, NotFound<string>>> UpdateAsync(
         int id, GenreUpdateDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
         var genre = await db.Genres.Include(m => m.Musics).FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
         if (genre is null)
-            return TypedResults.NotFound();
+            return TypedResults.NotFound($"Genre {id} not found.");
 
         genre.Name = input.Name;
         await db.SaveChangesAsync(cancellationToken);
@@ -94,12 +106,12 @@ public static class GenreEndpoint
 
 
     [HttpDelete]
-    private static async Task<Results<NoContent, NotFound>> DeleteAsync(
+    private static async Task<Results<NoContent, NotFound<string>>> DeleteAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
         var genre = await db.Genres.FindAsync([id], cancellationToken);
         if (genre is null)
-            return TypedResults.NotFound();
+            return TypedResults.NotFound($"Genre {id} not found.");
 
         db.Genres.Remove(genre);
         await db.SaveChangesAsync(cancellationToken);

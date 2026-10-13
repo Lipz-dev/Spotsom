@@ -154,6 +154,17 @@ public static class MusicEndpoint
             });
         }
 
+        if (music is not null)
+        {
+            var musicTeste = await db.Users.Select(m => m.Name.ToLower()).ToListAsync(cancellationToken);
+            var musicFilter = musicTeste.Where(m => m == input.Name.ToLower());
+
+            if (musicFilter.Count() > 0)
+            {
+                return TypedResults.BadRequest($"User {input.Name} already exists.");
+            }
+        }
+
         db.Musics.Add(music);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -166,7 +177,7 @@ public static class MusicEndpoint
     }
 
     [HttpPut("{id}")]
-    private static async Task<Results<Ok<MusicResponseDTO>, NotFound>> UpdateAsync(
+    private static async Task<Results<Ok<MusicResponseDTO>, NotFound<string>>> UpdateAsync(
         int id, UpdateMusicDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
         var music = await db.Musics
@@ -176,11 +187,15 @@ public static class MusicEndpoint
         .Include(g => g.Genre)
             .ThenInclude(gm => gm.Genre).FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
+        if (music is null)
+        {
+            return TypedResults.NotFound($"Music {id} not found.");
+        }
         var albumMus = await db.Albums.FindAsync([music.AlbumId], cancellationToken);
 
         if (music.Artists == null || music.Artists.Count() < 1)
         {
-            return TypedResults.NotFound();
+            return TypedResults.NotFound($"Artists for music {id} not found.");
         }
 
         music.Name = input.Name;
@@ -193,13 +208,13 @@ public static class MusicEndpoint
     }
 
     [HttpDelete("{id}")]
-    private static async Task<Results<NoContent, NotFound>> DeleteAsync(
+    private static async Task<Results<NoContent, NotFound<string>>> DeleteAsync(
     int id, SpotsomContext db, CancellationToken cancellationToken)
     {
         var music = await db.Musics.FindAsync([id], cancellationToken);
         if (music is null)
         {
-            return TypedResults.NotFound();
+            return TypedResults.NotFound($"Music {id} not found.");
         }
 
         db.Musics.Remove(music);

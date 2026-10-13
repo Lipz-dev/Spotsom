@@ -108,12 +108,12 @@ public static class ArtistEndpoint
 
 
     [HttpDelete]
-    private static async Task<Results<NoContent, NotFound>> DeleteAsync(
+    private static async Task<Results<NoContent, NotFound<string>>> DeleteAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
         var artist = await db.Artists.FindAsync([id], cancellationToken);
         if (artist is null)
-            return TypedResults.NotFound();
+            return TypedResults.NotFound($"Artist {id} not found.");
 
         db.Artists.Remove(artist);
         await db.SaveChangesAsync(cancellationToken);

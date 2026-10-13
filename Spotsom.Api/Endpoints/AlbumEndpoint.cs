@@ -4,6 +4,7 @@ using SpotSom.Api.Data;
 using SpotSom.Api.Models;
 using SpotSom.Api.Dtos;
 using Microsoft.AspNetCore.Mvc;
+using System.Reflection.Metadata;
 
 namespace Spotsom.Api.Endpoints;
 
@@ -27,7 +28,7 @@ public static class AlbumEndpoint
     }
 
     [HttpGet]
-    private static async Task<Results<Ok<PaginetedDto<AlbumResponseDTO>>, BadRequest<string>>> GetAllAsync(
+    private static async Task<Results<Ok<PaginetedDto<AlbumResponseDTO>>, NotFound<string>, BadRequest<string>>> GetAllAsync(
         int page, int pageSize, SpotsomContext db, CancellationToken cancellationToken)
     {
         if (page >= 1 && pageSize >= 1)
@@ -48,6 +49,10 @@ public static class AlbumEndpoint
         int totalItems = await db.Albums.CountAsync(cancellationToken);
         int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
 
+        if (page > totalPages)
+        {
+            return TypedResults.NotFound($"Page {page} no exist.");
+        }
 
         var response = new PaginetedDto<AlbumResponseDTO>(
             albums.Select(m => AlbumResponse(m)).ToList(),
@@ -56,13 +61,6 @@ public static class AlbumEndpoint
             totalItems,
             totalPages
         );
-
-        // List<AlbumResponseDTO> albumResponseDTO = albums.Select(al => new AlbumResponseDTO(
-        //     al.Name,
-        //     al.Musics.Select(m => m.Name).ToList(),
-        //     al.Artist.Name,
-        //     al.ReleaseDate)
-        // ).ToList();
 
         return TypedResults.Ok(response);
     }
@@ -112,6 +110,17 @@ public static class AlbumEndpoint
         if (artistAlbum == null)
         {
             return TypedResults.BadRequest("invalid input! artist is null.");
+        }
+
+        if (album is not null)
+        {
+            var albumTeste = await db.Users.Select(m => m.Name.ToLower()).ToListAsync(cancellationToken);
+            var albumFilter = albumTeste.Where(m => m == input.Name.ToLower());
+
+            if (albumFilter.Count() > 0)
+            {
+                return TypedResults.BadRequest($"User {input.Name} already exists.");
+            }
         }
 
         db.Albums.Add(album);
