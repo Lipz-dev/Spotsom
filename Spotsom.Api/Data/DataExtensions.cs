@@ -24,6 +24,7 @@ public static class DataExtensions
                 if (!context.Set<Genre>().Any())
                 {
                     context.Set<Genre>().AddRange(
+                        new Genre { Name = "Unknown" },
                         new Genre { Name = "Rock" },
                         new Genre { Name = "Pop" },
                         new Genre { Name = "Pop Rock" },
@@ -33,6 +34,36 @@ public static class DataExtensions
                         new Genre { Name = "Trap" }
                     );
 
+                    context.SaveChanges();
+                }
+                if (!context.Set<User>().Any())
+                {
+                    context.Set<User>().AddRange(
+                        new User { Name = "Unknown" },
+                        new User { Name = "Admin" }
+                    );
+                    context.SaveChanges();
+                }
+
+                if (!context.Set<Artist>().Any())
+                {
+                    context.Set<Artist>().AddRange(
+                        new Artist { Name = "Unknown" }
+                    );
+                    context.SaveChanges();
+                }
+
+                if (!context.Set<Album>().Any())
+                {
+                    context.Set<Album>().AddRange(
+                        new Album
+                        {
+                            Name = "Unknown",
+                            ReleaseDate = DateOnly.FromDateTime(DateTime.Now),
+                            ArtistId = 1,
+                            Artist = context.Set<Artist>().FirstOrDefault(a => a.Id == 1)
+                        }
+                    );
                     context.SaveChanges();
                 }
             }));

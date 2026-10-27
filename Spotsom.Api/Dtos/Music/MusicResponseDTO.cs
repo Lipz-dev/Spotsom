@@ -12,5 +12,6 @@ public record MusicResponseDTO(
     [Required] DateOnly ReleaseDate,
     [Required] List<string> Artists,
     [Required] List<string> Genres,
-    [Required] string Album
+    [Required] string Album,
+    [Required] string AudioUrl
 );

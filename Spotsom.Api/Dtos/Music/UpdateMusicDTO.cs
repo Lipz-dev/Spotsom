@@ -1,9 +1,11 @@
 
 using System.ComponentModel.DataAnnotations;
-using SpotSom.Api.Models;
 namespace SpotSom.Api.Dtos;
 
 public record UpdateMusicDTO(
-    [StringLength(30)] string Name//,
-                                  //IFormFile CapeImage
+    [StringLength(30)] string Name,
+    int AlbumId,
+    List<int> GenreIds,
+    List<int> ArtistIds
+//IFormFile CapeImage
 );

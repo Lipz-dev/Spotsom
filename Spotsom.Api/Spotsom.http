@@ -60,21 +60,21 @@ Content-Type: application/json
 
 
 ###-----------------------USERS-------------------------#
-GET http://localhost:5148/api/users/page=3/size=2
+GET http://127.0.0.1:5000/api/users/page=1/size=2
 
 ###
-GET  http://localhost:5148/api/users/1
+GET  http://127.0.0.1:5000/api/users/1
 
 ###
-POST http://localhost:5148/api/users/create
+POST http://127.0.0.1:5000/api/users/create
 Content-Type: application/json
 
 {
-    "name": "teste5"
+    "name": "Admin"
 }
 
 ### 
-PUT http://localhost:5148/api/users/1/edit  
+PUT http://127.0.0.1:5000/api/users/1/edit  
 Content-Type: application/json
 
 {
@@ -82,51 +82,56 @@ Content-Type: application/json
 }
 
 ###
-DELETE http://localhost:5148/api/users/1
+DELETE http://127.0.0.1:5000/api/users/1
 
 
 
 ###-----------------Music-----------------
-GET http://localhost:5148/api/musics/page=1/size=2
+GET http://127.0.0.1:5000/api/musics/page=1/size=2
 
 ###
-GET http://localhost:5148/api/musics/1
+GET http://127.0.0.1:5000/api/musics/1
 
 
 ###
-POST http://localhost:5148/api/musics/create
+GET http://127.0.0.1:5000/api/musics/player/1
+
+
+###
+POST http://127.0.0.1:5000/api/musics/create
+Content-Type: multipart/form-data; boundary=SpotsomBoundary
+
+--SpotsomBoundary
+Content-Disposition: form-data; name="Audio"; filename="music002.mp3"
+Content-Type: audio/mpeg
+
+< C:\Users\flipe\OneDrive\Área de Trabalho\ProjetoWeb\MySpotify\Spotsom.Api\Storage\music002.mp3
+--SpotsomBoundary--
+
+###
+PUT http://127.0.0.1:5000/api/musics/1/edit
 Content-Type: application/json
 
 {
-    "name": "carol carolin",
-    "artistIds": [1],
-    "genreIds": [1,7],
+    "name": "Just In The Wind",
     "albumId": 2,
-    "releaseDate": "1989-04-12",
-    "duration": "00:03:20"
+    "genreIds": [2,3],
+    "artistIds": [2,3]
 }
 
 ###
-PUT http://localhost:5148/api/musics/1/edit
-Content-Type: application/json
-
-{
-    "name": "Baby"
-}
-
-###
-DELETE http://localhost:5148/api/musics/1
+DELETE http://127.0.0.1:5000/api/musics/1
 
 
 #--------------PLAYLISTS------------------
 ###
-GET http://localhost:5148/api/playlists/page=1/size=2
+GET http://127.0.0.1:5000/api/playlists/page=1/size=2
 
 ###
-GET http://localhost:5148/api/playlists/1
+GET http://127.0.0.1:5000/api/playlists/1
 
 ### Create playlist
-POST http://localhost:5148/api/playlists/create
+POST http://127.0.0.1:5000/api/playlists/create
 Content-Type: application/json
 
 {
@@ -135,7 +140,7 @@ Content-Type: application/json
 }
 
 ### Update name playlist 
-PUT http://localhost:5148/api/playlists/3/edit
+PUT http://127.0.0.1:5000/api/playlists/3/edit
 Content-Type: application/json
 
 {
@@ -143,7 +148,7 @@ Content-Type: application/json
 }
 
 ### Add music in playlist
-PUT http://localhost:5148/api/playlists/3/add
+PUT http://127.0.0.1:5000/api/playlists/3/add
 Content-Type: application/json
 
 {
@@ -151,27 +156,26 @@ Content-Type: application/json
 }
 
 ###
-DELETE http://localhost:5148/api/playlists/1
+DELETE http://127.0.0.1:5000/api/playlists/1
 
 
 ### -----------------ALBUMS-----------------
-GET http://localhost:5148/api/albums/page=2/size=3
+GET http://127.0.0.1:5000/api/albums/page=1/size=3
 
 ###
-GET http://localhost:5148/api/albums/1
+GET http://127.0.0.1:5000/api/albums/2
 
 ###
-POST http://localhost:5148/api/albums/create
+POST http://127.0.0.1:5000/api/albums/create
 Content-Type: application/json
 
 {
-    "name": "Dont tap the glass 10",
-    "artistId": 1,
-    "releaseDate": "2026-08-31"
+    "name": "Madness",
+    "artistId": 2
 }
 
 ###
-PUT http://localhost:5148/api/albums/2/edit
+PUT http://127.0.0.1:5000/api/albums/2/edit
 Content-Type: application/json
 
 {
@@ -179,7 +183,7 @@ Content-Type: application/json
 }
 
 ###
-PUT http://localhost:5148/api/albums/1/addmusic
+PUT http://127.0.0.1:5000/api/albums/1/addmusic
 Content-Type: application/json
 
 {
@@ -187,28 +191,27 @@ Content-Type: application/json
 }
 
 ###
-DELETE http://localhost:5148/api/albums/2
+DELETE http://127.0.0.1:5000/api/albums/2
 
 
 
 
 ###-----------------ARTISTS-----------------
-GET http://localhost:5148/api/artists/page=2/size=4
+GET http://127.0.0.1:5000/api/artists/page=1/size=4
 
 ###
-GET http://localhost:5148/api/artists/1
+GET http://127.0.0.1:5000/api/artists/1
 
 ###
-POST http://localhost:5148/api/artists/create
+POST http://127.0.0.1:5000/api/artists/create
 Content-Type: application/json
 
 {
-    "name": "Sabrina Carpenter",
-    "releaseDate": "2026-08-31"
+    "name": "Travis Scott"
 }
 
 ###
-PUT http://localhost:5148/api/artists/2/edit
+PUT http://127.0.0.1:5000/api/artists/2/edit
 Content-Type: application/json
 
 {
@@ -216,18 +219,18 @@ Content-Type: application/json
 }
 
 ###
-DELETE http://localhost:5148/api/artists/1
+DELETE http://127.0.0.1:5000/api/artists/1
 
 
 
 ###-----------------GENRES-----------------
-GET http://localhost:5148/api/genres/page=4/size=2
+GET http://127.0.0.1:5000/api/genres/page=4/size=2
 
 ###
-GET http://localhost:5148/api/genres/1
+GET http://127.0.0.1:5000/api/genres/1
 
 ###
-POST http://localhost:5148/api/genres/create
+POST http://127.0.0.1:5000/api/genres/create
 Content-Type: application/json
 
 {
@@ -235,13 +238,13 @@ Content-Type: application/json
 }
 
 ###
-PUT http://localhost:5148/api/genres/1/edit
-Content-Type: application/json  
+PUT http://127.0.0.1:5000/api/genres/1/edit
+Content-Type: application/json
 
 {
     "name": "Genre Teste2"
 }
 
 ###
-DELETE http://localhost:5148/api/genres/1
+DELETE http://127.0.0.1:5000/api/genres/1
 

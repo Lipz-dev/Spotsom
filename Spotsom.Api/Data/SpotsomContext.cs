@@ -18,7 +18,20 @@ public class SpotsomContext(DbContextOptions<SpotsomContext> options)
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<MusicGenres>().HasKey(mg => new { mg.GenreIds, mg.MusicId });
-        modelBuilder.Entity<MusicsArtists>().HasKey(ma => new { ma.ArtistsId, ma.MusicId });
+        modelBuilder.Entity<MusicGenres>()
+            .HasKey(mg => new { mg.GenreIds, mg.MusicId });
+
+        modelBuilder.Entity<MusicsArtists>()
+            .HasKey(ma => new { ma.ArtistsId, ma.MusicId });
+
+        modelBuilder.Entity<MusicsArtists>()
+            .HasOne(ma => ma.Artist)
+            .WithMany(a => a.Musics)
+            .HasForeignKey(ma => ma.ArtistsId);
+
+        modelBuilder.Entity<MusicGenres>()
+        .HasOne(mg => mg.Genre)
+        .WithMany(g => g.Musics)
+        .HasForeignKey(mg => mg.GenreIds);
     }
 }

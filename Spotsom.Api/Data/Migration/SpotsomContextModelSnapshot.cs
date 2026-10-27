@@ -2,20 +2,17 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SpotSom.Api.Data;
 
 #nullable disable
 
-namespace Spotsom.Api.Data.Migrations
+namespace Spotsom.Api.Data.Migration
 {
     [DbContext(typeof(SpotsomContext))]
-    [Migration("20260929180851_InitialMigrate")]
-    partial class InitialMigrate
+    partial class SpotsomContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.3");
@@ -82,6 +79,9 @@ namespace Spotsom.Api.Data.Migrations
                     b.Property<int>("AlbumId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AudioPath")
+                        .HasColumnType("TEXT");
+
                     b.Property<TimeSpan>("Duration")
                         .HasColumnType("TEXT");
 
@@ -112,12 +112,7 @@ namespace Spotsom.Api.Data.Migrations
                     b.Property<int>("MusicId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("GenreId")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("GenreIds", "MusicId");
-
-                    b.HasIndex("GenreId");
 
                     b.HasIndex("MusicId");
 
@@ -132,12 +127,7 @@ namespace Spotsom.Api.Data.Migrations
                     b.Property<int>("MusicId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("ArtistId")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("ArtistsId", "MusicId");
-
-                    b.HasIndex("ArtistId");
 
                     b.HasIndex("MusicId");
 
@@ -218,7 +208,9 @@ namespace Spotsom.Api.Data.Migrations
                 {
                     b.HasOne("SpotSom.Api.Models.Genre", "Genre")
                         .WithMany("Musics")
-                        .HasForeignKey("GenreId");
+                        .HasForeignKey("GenreIds")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("SpotSom.Api.Models.Music", "Music")
                         .WithMany("Genre")
@@ -235,7 +227,9 @@ namespace Spotsom.Api.Data.Migrations
                 {
                     b.HasOne("SpotSom.Api.Models.Artist", "Artist")
                         .WithMany("Musics")
-                        .HasForeignKey("ArtistId");
+                        .HasForeignKey("ArtistsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("SpotSom.Api.Models.Music", "Music")
                         .WithMany("Artists")

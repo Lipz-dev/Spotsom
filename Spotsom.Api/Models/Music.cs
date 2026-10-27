@@ -6,9 +6,8 @@ public class Music
 {
     public int Id { get; set; }
     public required string Name { get; set; }
-    //public IFormFile? ImageCape { get; set; }
+    public string? AudioPath { get; set; }
     public ICollection<MusicsArtists> Artists { get; set; } = [];
-
     public ICollection<MusicGenres> Genre { get; set; } = [];
     public Album? Album { get; set; }
     public int AlbumId { get; set; }

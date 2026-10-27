@@ -6,7 +6,6 @@ namespace SpotSom.Api.Dtos;
 
 public record AlbumCreateDTO(
     [Required][StringLength(25)] string Name,
-    //IFormFile? ImageCape,
     [Required] int ArtistId
 
 );

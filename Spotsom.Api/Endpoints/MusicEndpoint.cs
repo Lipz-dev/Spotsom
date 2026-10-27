@@ -4,6 +4,11 @@ using Microsoft.EntityFrameworkCore;
 using SpotSom.Api.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
+using System.IO;
+using Spotsom.Api.Services;
+using SpotSom.Api.Services;
+using System.Runtime.CompilerServices;
+
 
 namespace SpotSom.Api.Endpoints;
 
@@ -15,7 +20,8 @@ public static class MusicEndpoint
 
         group.MapGet("/page={page:int}/size={pageSize:int}", GetAllAsync);
         group.MapGet("/{id:int}", GetByIdAsync);
-        group.MapPost("/create", CreatedAsync);
+        group.MapGet("/player/{id:int}", GetPlayerAsync);
+        group.MapPost("/create", CreatedAsync).DisableAntiforgery();
         group.MapPut("/{id:int}/edit/", UpdateAsync);
         group.MapDelete("/{id:int}", DeleteAsync);
 
@@ -62,11 +68,13 @@ public static class MusicEndpoint
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
 
+
         var music = await db.Musics
         .Include(m => m.Artists).ThenInclude(ma => ma.Artist)
         .Include(g => g.Genre).ThenInclude(mg => mg.Genre)
         .Include(a => a.Album)
         .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
+
 
         if (music is null)
         {
@@ -78,92 +86,99 @@ public static class MusicEndpoint
             return TypedResults.BadRequest("Erro ao buscar a música. Verifique se os IDs de artistas e gêneros são válidos.");
         }
 
+
         MusicResponseDTO response = MusicResponse(music);
 
         return TypedResults.Ok(response);
     }
 
-    [HttpPost]
-    private static async Task<Results<Created<MusicResponseDTO>, BadRequest<string>>> CreatedAsync(
-            CreateMusicDTO input,
+    [HttpGet] //Music Player
+    private static async Task<IResult> GetPlayerAsync(
+        int id,
+        SpotsomContext db,
+        IWebHostEnvironment environment,
+        CancellationToken cancellationToken)
+    {
+
+        var audioPath = await db.Musics
+            .Where(m => m.Id == id)
+            .Select(m => m.AudioPath)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (audioPath is null)
+        {
+            return TypedResults.NotFound($"Music {id} not found.");
+        }
+
+        var storedPath = Uri.TryCreate(audioPath, UriKind.Absolute, out var uri) && uri.IsFile
+            ? uri.LocalPath
+            : audioPath;
+        var fileName = Path.GetFileName(storedPath);
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return TypedResults.NotFound($"Audio for music {id} not found.");
+        }
+
+        var filePath = Path.Combine(
+            environment.ContentRootPath,
+            "wwwroot",
+            "audio",
+            fileName
+        );
+        return File.Exists(filePath)
+            ? TypedResults.PhysicalFile(filePath, "audio/mpeg", enableRangeProcessing: true)
+            : TypedResults.NotFound($"Audio for music {id} not found.");
+    }
+
+    [HttpPost] //Create Music
+    private static async Task<Results<Created<MusicResponseDTO>, BadRequest<string>>>
+     CreatedAsync(
+            [FromForm] CreateMusicDTO input,
+            MusicService musicService,
+            AudioStorageService audioStorage,
             SpotsomContext db,
             CancellationToken cancellationToken)
     {
-        // Verify if album exist
-        var album = await db.Albums
-            .FindAsync([input.AlbumId], cancellationToken);
-
-        if (album is null)
+        var musicExists = await musicService.MusicExists(cancellationToken, input.Audio.FileName);
+        if (musicExists.Contains("already exists"))
         {
-            return TypedResults.BadRequest(
-                $"Álbum {input.AlbumId} não encontrado."
-            );
+            return TypedResults.BadRequest(musicExists);
         }
 
-        // search all Artists
-        var artists = await db.Artists
-            .Where(a => input.ArtistIds.Contains(a.Id))
-            .ToListAsync(cancellationToken);
-
-        // Verify if Ids Artists sent exist
-        if (artists.Count != input.ArtistIds.Count)
+        var album = await db.Albums.FindAsync([1], cancellationToken);
+        var artist = await db.Artists.FindAsync([1], cancellationToken);
+        var genre = await db.Genres.FindAsync([1], cancellationToken);
+        if (album is null || artist is null || genre is null)
         {
-            return TypedResults.BadRequest(
-                "Um ou mais artistas informados não existem."
-            );
+            return TypedResults.BadRequest("Erro ao criar a música. Verifique se os IDs de artistas e gêneros são válidos.");
         }
 
-        // search all Genres
-        var genres = await db.Genres
-            .Where(g => input.GenreIds.Contains(g.Id))
-            .ToListAsync(cancellationToken);
-
-        // Verify if Ids Genres sent exist
-        if (genres.Count != input.GenreIds.Count)
-        {
-            return TypedResults.BadRequest(
-                "Um ou mais gêneros informados não existem."
-            );
-        }
+        var audioPath = await audioStorage.SaveAsync(
+            input.Audio,
+            cancellationToken
+        );
 
         var music = new Music
         {
-            Name = input.Name,
-            Duration = input.Duration,
-            ReleaseDate = input.ReleaseDate,
-            AlbumId = input.AlbumId
+            Name = input.Audio.FileName,
+            AudioPath = audioPath,
+            Duration = input.Audio.Length > 0 ? TimeSpan.FromSeconds(input.Audio.Length / 1000.0) : TimeSpan.Zero,
+            ReleaseDate = DateOnly.FromDateTime(DateTime.Now),
+            AlbumId = album.Id,
+            Album = album
         };
 
-        // Create relationship Music <-> Artist
-        foreach (var artist in artists)
+        music.Artists.Add(new MusicsArtists
         {
-            music.Artists.Add(new MusicsArtists
-            {
-                ArtistsId = artist.Id,
-                Artist = artist
-            });
-        }
+            ArtistsId = artist.Id,
+            Artist = artist
+        });
 
-        //Create relationship Music <-> Genre
-        foreach (var genre in genres)
+        music.Genre.Add(new MusicGenres
         {
-            music.Genre.Add(new MusicGenres
-            {
-                GenreIds = genre.Id,
-                Genre = genre
-            });
-        }
-
-        if (music is not null)
-        {
-            var musicTeste = await db.Users.Select(m => m.Name.ToLower()).ToListAsync(cancellationToken);
-            var musicFilter = musicTeste.Where(m => m == input.Name.ToLower());
-
-            if (musicFilter.Count() > 0)
-            {
-                return TypedResults.BadRequest($"User {input.Name} already exists.");
-            }
-        }
+            GenreIds = genre.Id,
+            Genre = genre
+        });
 
         db.Musics.Add(music);
         await db.SaveChangesAsync(cancellationToken);
@@ -176,35 +191,38 @@ public static class MusicEndpoint
         );
     }
 
-    [HttpPut("{id}")]
-    private static async Task<Results<Ok<MusicResponseDTO>, NotFound<string>>> UpdateAsync(
-        int id, UpdateMusicDTO input, SpotsomContext db, CancellationToken cancellationToken)
+    [HttpPut("{id}")] //Update Music
+    private static async Task<Results<Ok<MusicResponseDTO>, NotFound<string>, BadRequest<string>>> UpdateAsync(
+        int id, UpdateMusicDTO input, SpotsomContext db,
+        MusicService musicService, CancellationToken cancellationToken)
     {
         var music = await db.Musics
         .Include(a => a.Artists)
             .ThenInclude(am => am.Artist)
         .Include(al => al.Album)
         .Include(g => g.Genre)
-            .ThenInclude(gm => gm.Genre).FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
+            .ThenInclude(gm => gm.Genre).AsSplitQuery()
+            .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
         if (music is null)
         {
             return TypedResults.NotFound($"Music {id} not found.");
         }
-        var albumMus = await db.Albums.FindAsync([music.AlbumId], cancellationToken);
 
-        if (music.Artists == null || music.Artists.Count() < 1)
+        // if (music.Artists == null || music.Artists.Count() < 1)
+        // {
+        //     return TypedResults.NotFound($"Artists for music {id} not found.");
+        // }
+
+
+        var musicUpdateResponse = await musicService.UpdateMusicAsync(music, input, cancellationToken);
+
+        if (musicUpdateResponse is null)
         {
-            return TypedResults.NotFound($"Artists for music {id} not found.");
+            return TypedResults.BadRequest("Album, artist, or genre ID does not exist.");
         }
 
-        music.Name = input.Name;
-
-        await db.SaveChangesAsync(cancellationToken);
-
-        MusicResponseDTO response = MusicResponse(music);
-
-        return TypedResults.Ok(response);
+        return TypedResults.Ok(musicUpdateResponse);
     }
 
     [HttpDelete("{id}")]
@@ -229,9 +247,10 @@ public static class MusicEndpoint
         music.Name,
         music.Duration,
         music.ReleaseDate,
-        music.Artists.Select(g => g.Artist.Name).ToList(),
+        music.Artists.Select(a => a.Artist.Name).ToList(),
         music.Genre.Select(g => g.Genre.Name).ToList(),
-        music.Album.Name
+        music.Album.Name,
+        $"/api/musics/player/{music.Id}"
         );
     }
 }

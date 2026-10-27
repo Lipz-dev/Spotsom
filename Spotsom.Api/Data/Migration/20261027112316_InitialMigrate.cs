@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Spotsom.Api.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMigrate : Migration
+    public partial class InitialMigrate : Microsoft.EntityFrameworkCore.Migrations.Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -101,6 +101,7 @@ namespace Spotsom.Api.Data.Migrations
                     Id = table.Column<int>(type: "INTEGER", nullable: false)
                         .Annotation("Sqlite:Autoincrement", true),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
+                    AudioPath = table.Column<string>(type: "TEXT", nullable: true),
                     AlbumId = table.Column<int>(type: "INTEGER", nullable: false),
                     ReleaseDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
                     Duration = table.Column<TimeSpan>(type: "TEXT", nullable: false),
@@ -127,17 +128,17 @@ namespace Spotsom.Api.Data.Migrations
                 columns: table => new
                 {
                     MusicId = table.Column<int>(type: "INTEGER", nullable: false),
-                    GenreIds = table.Column<int>(type: "INTEGER", nullable: false),
-                    GenreId = table.Column<int>(type: "INTEGER", nullable: true)
+                    GenreIds = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_MusicGenres", x => new { x.GenreIds, x.MusicId });
                     table.ForeignKey(
-                        name: "FK_MusicGenres_Genres_GenreId",
-                        column: x => x.GenreId,
+                        name: "FK_MusicGenres_Genres_GenreIds",
+                        column: x => x.GenreIds,
                         principalTable: "Genres",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_MusicGenres_Musics_MusicId",
                         column: x => x.MusicId,
@@ -151,17 +152,17 @@ namespace Spotsom.Api.Data.Migrations
                 columns: table => new
                 {
                     MusicId = table.Column<int>(type: "INTEGER", nullable: false),
-                    ArtistsId = table.Column<int>(type: "INTEGER", nullable: false),
-                    ArtistId = table.Column<int>(type: "INTEGER", nullable: true)
+                    ArtistsId = table.Column<int>(type: "INTEGER", nullable: false)
                 },
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_MusicsArtists", x => new { x.ArtistsId, x.MusicId });
                     table.ForeignKey(
-                        name: "FK_MusicsArtists_Artists_ArtistId",
-                        column: x => x.ArtistId,
+                        name: "FK_MusicsArtists_Artists_ArtistsId",
+                        column: x => x.ArtistsId,
                         principalTable: "Artists",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_MusicsArtists_Musics_MusicId",
                         column: x => x.MusicId,
@@ -174,11 +175,6 @@ namespace Spotsom.Api.Data.Migrations
                 name: "IX_Albums_ArtistId",
                 table: "Albums",
                 column: "ArtistId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MusicGenres_GenreId",
-                table: "MusicGenres",
-                column: "GenreId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_MusicGenres_MusicId",
@@ -194,11 +190,6 @@ namespace Spotsom.Api.Data.Migrations
                 name: "IX_Musics_PlaylistId",
                 table: "Musics",
                 column: "PlaylistId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_MusicsArtists_ArtistId",
-                table: "MusicsArtists",
-                column: "ArtistId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_MusicsArtists_MusicId",
