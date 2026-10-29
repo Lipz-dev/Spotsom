@@ -22,7 +22,7 @@ public static class DataExtensions
     /// <summary>
     /// Registers SQLite and seeds the default catalog records on first database creation.
     /// </summary>
-    public static void AddGenreSqlite(this WebApplicationBuilder builder)
+    public static void SeedingSqlite(this WebApplicationBuilder builder)
     {
         var connString = builder.Configuration.GetConnectionString("Spotsom");
 

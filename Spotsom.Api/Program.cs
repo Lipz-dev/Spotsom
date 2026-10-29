@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddValidation();
-builder.AddGenreSqlite();
+builder.SeedingSqlite();
 
 
 builder.Services.AddScoped<AudioStorageService>();
