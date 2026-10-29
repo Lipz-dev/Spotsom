@@ -3,6 +3,9 @@ using System.ComponentModel.DataAnnotations;
 
 namespace SpotSom.Api.Models;
 
+/// <summary>
+/// Represents an album owned by one artist and containing the tracks released in that collection.
+/// </summary>
 public class Album
 {
     public int Id { get; set; }

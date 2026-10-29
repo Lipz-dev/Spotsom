@@ -2,7 +2,6 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using SpotSom.Api.Data;
 
@@ -11,11 +10,9 @@ using SpotSom.Api.Data;
 namespace Spotsom.Api.Data.Migrations
 {
     [DbContext(typeof(SpotsomContext))]
-    [Migration("20261027112316_InitialMigrate")]
-    partial class InitialMigrate
+    partial class SpotsomContextModelSnapshot : ModelSnapshot
     {
-        /// <inheritdoc />
-        protected override void BuildTargetModel(ModelBuilder modelBuilder)
+        protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.3");
@@ -109,13 +106,16 @@ namespace Spotsom.Api.Data.Migrations
 
             modelBuilder.Entity("SpotSom.Api.Models.MusicGenres", b =>
                 {
-                    b.Property<int>("GenreIds")
+                    b.Property<int>("GenresId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("MusicId")
+                    b.Property<int>("MusicsId")
                         .HasColumnType("INTEGER");
 
-                    b.HasKey("GenreIds", "MusicId");
+                    b.Property<int?>("MusicId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("GenresId", "MusicsId");
 
                     b.HasIndex("MusicId");
 
@@ -127,10 +127,13 @@ namespace Spotsom.Api.Data.Migrations
                     b.Property<int>("ArtistsId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int>("MusicId")
+                    b.Property<int>("MusicsId")
                         .HasColumnType("INTEGER");
 
-                    b.HasKey("ArtistsId", "MusicId");
+                    b.Property<int?>("MusicId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ArtistsId", "MusicsId");
 
                     b.HasIndex("MusicId");
 
@@ -142,9 +145,6 @@ namespace Spotsom.Api.Data.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
-
-                    b.Property<TimeOnly>("Duration")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -211,15 +211,13 @@ namespace Spotsom.Api.Data.Migrations
                 {
                     b.HasOne("SpotSom.Api.Models.Genre", "Genre")
                         .WithMany("Musics")
-                        .HasForeignKey("GenreIds")
+                        .HasForeignKey("GenresId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("SpotSom.Api.Models.Music", "Music")
-                        .WithMany("Genre")
-                        .HasForeignKey("MusicId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .WithMany("Genres")
+                        .HasForeignKey("MusicId");
 
                     b.Navigation("Genre");
 
@@ -236,9 +234,7 @@ namespace Spotsom.Api.Data.Migrations
 
                     b.HasOne("SpotSom.Api.Models.Music", "Music")
                         .WithMany("Artists")
-                        .HasForeignKey("MusicId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("MusicId");
 
                     b.Navigation("Artist");
 
@@ -275,7 +271,7 @@ namespace Spotsom.Api.Data.Migrations
                 {
                     b.Navigation("Artists");
 
-                    b.Navigation("Genre");
+                    b.Navigation("Genres");
                 });
 
             modelBuilder.Entity("SpotSom.Api.Models.Playlist", b =>

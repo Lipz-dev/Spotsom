@@ -3,6 +3,9 @@ using SpotSom.Api.Models;
 
 namespace SpotSom.Api.Data;
 
+/// <summary>
+/// EF Core database context for Spotsom music library entities and relationships.
+/// </summary>
 public class SpotsomContext(DbContextOptions<SpotsomContext> options)
 : DbContext(options)
 {
@@ -19,19 +22,21 @@ public class SpotsomContext(DbContextOptions<SpotsomContext> options)
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<MusicGenres>()
-            .HasKey(mg => new { mg.GenreIds, mg.MusicId });
+            .HasKey(mg => new { mg.GenresId, mg.MusicsId });
 
         modelBuilder.Entity<MusicsArtists>()
-            .HasKey(ma => new { ma.ArtistsId, ma.MusicId });
+            .HasKey(ma => new { ma.ArtistsId, ma.MusicsId });
 
         modelBuilder.Entity<MusicsArtists>()
             .HasOne(ma => ma.Artist)
             .WithMany(a => a.Musics)
-            .HasForeignKey(ma => ma.ArtistsId);
+            .HasForeignKey(ma => ma.ArtistsId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<MusicGenres>()
         .HasOne(mg => mg.Genre)
         .WithMany(g => g.Musics)
-        .HasForeignKey(mg => mg.GenreIds);
+        .HasForeignKey(mg => mg.GenresId)
+        .OnDelete(DeleteBehavior.Cascade);
     }
 }

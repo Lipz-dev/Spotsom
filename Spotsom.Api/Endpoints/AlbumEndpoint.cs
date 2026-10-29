@@ -8,8 +8,14 @@ using System.Reflection.Metadata;
 
 namespace Spotsom.Api.Endpoints;
 
+/// <summary>
+/// Registers album routes and their CRUD and music-association operations.
+/// </summary>
 public static class AlbumEndpoint
 {
+    /// <summary>
+    /// Maps all album endpoints under the <c>/api/albums</c> route group.
+    /// </summary>
     public static IEndpointRouteBuilder MapAlbumEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/albums").WithTags("Albums");
@@ -31,16 +37,11 @@ public static class AlbumEndpoint
     private static async Task<Results<Ok<PaginetedDto<AlbumResponseDTO>>, NotFound<string>, BadRequest<string>>> GetAllAsync(
         int page, int pageSize, SpotsomContext db, CancellationToken cancellationToken)
     {
-        if (page >= 1 && pageSize >= 1)
-        {
-            page = page;
-            pageSize = pageSize;
-        }
-        else
-        {
-            return TypedResults.BadRequest("page e size is null.");
-        }
 
+        if (page <= 0 || pageSize <= 0)
+        {
+            return TypedResults.BadRequest("Page and pageSize must be greater than zero.");
+        }
         var albums = await db.Albums.OrderBy(a => a.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize).Include(a => a.Artist)
@@ -69,12 +70,12 @@ public static class AlbumEndpoint
     private static async Task<Results<Ok<AlbumResponseDTO>, NotFound<string>>> GetByIdAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var album = db.Albums.Include(a => a.Artist)
-        .Include(m => m.Musics).FirstOrDefault(m => m.Id == id);
+        var album = await db.Albums.Include(a => a.Artist)
+        .Include(m => m.Musics).FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
         if (album is null)
         {
-            return TypedResults.NotFound($"Album {id} não encontrado.");
+            return TypedResults.NotFound($"Album {id} not found.");
         }
 
         AlbumResponseDTO response = AlbumResponse(album);
@@ -89,7 +90,7 @@ public static class AlbumEndpoint
 
         if (artistsAl is null)
         {
-            return TypedResults.NotFound($"Artista {input.ArtistId} do album não encontrado.");
+            return TypedResults.NotFound($"Artist {input.ArtistId} for the album was not found.");
         }
 
         Album album = new Album
@@ -122,8 +123,13 @@ public static class AlbumEndpoint
                 return TypedResults.BadRequest($"User {input.Name} already exists.");
             }
         }
+        else
+        {
+            return TypedResults.BadRequest("Invalid input! album is null.");
+        }
 
         db.Albums.Add(album);
+
         await db.SaveChangesAsync(cancellationToken);
 
 
@@ -153,7 +159,8 @@ public static class AlbumEndpoint
         return TypedResults.Ok(response);
     }
 
-    [HttpPut] //ADD MUSIC IN ALBUM
+    // Associates a track with the album; duplicate associations are rejected.
+    [HttpPut]
     private static async Task<Results<Ok<AlbumResponseDTO>, NotFound<string>, BadRequest<string>>> AddMusicAsync(
         int id, AddMusicInCollectionDTO input, SpotsomContext db
         , CancellationToken cancellationToken)
@@ -178,14 +185,14 @@ public static class AlbumEndpoint
             }
         }
 
+        if (duplicate)
+        {
+            return TypedResults.BadRequest("This music is already in the album; choose another one.");
+        }
+
         album.Musics.Add(musicAdd);
 
         AlbumResponseDTO response = AlbumResponse(album);
-
-        if (duplicate)
-        {
-            return TypedResults.BadRequest("esta musica já está dentro do album, coloque outra");
-        }
 
         await db.SaveChangesAsync(cancellationToken);
 
@@ -200,9 +207,8 @@ public static class AlbumEndpoint
         var album = await db.Albums.FindAsync([id], cancellationToken);
         if (album is null)
         {
-            return TypedResults.NotFound($"Album {id} não encontrado.");
+            return TypedResults.NotFound($"Album {id} not found.");
         }
-
 
         db.Albums.Remove(album);
         await db.SaveChangesAsync(cancellationToken);

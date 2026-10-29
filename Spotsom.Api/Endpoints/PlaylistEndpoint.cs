@@ -8,15 +8,21 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace SpotSom.Api.Endpoints;
 
+/// <summary>
+/// Registers playlist routes, including playlist creation and music membership.
+/// </summary>
 public static class PlaylistEndpoints
 {
+    /// <summary>
+    /// Maps all playlist endpoints under the <c>/api/playlists</c> route group.
+    /// </summary>
     public static IEndpointRouteBuilder MapPlaylistEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/playlists").WithTags("Playlists");
 
         group.MapGet("/page={page:int}/size={pageSize:int}", GetAllAsync);
         group.MapGet("/{id:int}", GetByIdAsync);
-        group.MapPost("/create", CreatedAsync);
+        group.MapPost("/create", CreateAsync);
         group.MapPut("/{id:int}/edit/", UpdateAsync);
         group.MapPut("/{id:int}/add", AddMusicAsync);
         group.MapDelete("/{id:int}", DeleteAsync);
@@ -74,7 +80,7 @@ public static class PlaylistEndpoints
     }
 
     [HttpPost]
-    private static async Task<Results<Created<PlaylistResponseDTO>, NotFound>> CreatedAsync(
+    private static async Task<Results<Created<PlaylistResponseDTO>, NotFound>> CreateAsync(
     CreatePlaylistDTO input, SpotsomContext db, CancellationToken cancellationToken)
     {
         var user = await db.Users.FindAsync([input.UserId], cancellationToken);
@@ -89,8 +95,7 @@ public static class PlaylistEndpoints
             UserId = user.Id,
             User = user,
             Musics = new List<Music>(),
-            ReleaseDate = DateOnly.FromDateTime(DateTime.Now),
-            Duration = new TimeOnly(00, 04, 30)
+            ReleaseDate = DateOnly.FromDateTime(DateTime.Now)
         };
 
         PlaylistResponseDTO response = PlaylistResponse(playlist);
@@ -120,7 +125,8 @@ public static class PlaylistEndpoints
     }
 
 
-    [HttpPut] //ADD MUSIC IN ALBUM
+    // Adds a track only when the same track is not already part of the playlist.
+    [HttpPut]
     private static async Task<Results<Ok<PlaylistResponseDTO>, NotFound, BadRequest>> AddMusicAsync(
         int id, AddMusicInCollectionDTO input, SpotsomContext db,
              CancellationToken cancellationToken)
@@ -150,12 +156,13 @@ public static class PlaylistEndpoints
             return TypedResults.NotFound();
         }
 
-        playlist.Musics.Add(musicAdd);
-
         if (duplicate)
         {
             return TypedResults.BadRequest();
         }
+
+        playlist.Musics.Add(musicAdd);
+
 
         await db.SaveChangesAsync(cancellationToken);
         PlaylistResponseDTO response = PlaylistResponse(playlist);

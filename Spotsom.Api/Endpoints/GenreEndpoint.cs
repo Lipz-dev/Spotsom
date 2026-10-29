@@ -7,8 +7,14 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace Spotsom.Api.Endpoints;
 
+/// <summary>
+/// Registers genre routes and exposes the music associated with each genre.
+/// </summary>
 public static class GenreEndpoint
 {
+    /// <summary>
+    /// Maps all genre endpoints under the <c>/api/genres</c> route group.
+    /// </summary>
     public static IEndpointRouteBuilder MapGenreEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/genres").WithTags("Genres");
@@ -23,9 +29,13 @@ public static class GenreEndpoint
     }
 
     [HttpGet]
-    private static async Task<Ok<PaginetedDto<GenreResponseDTO>>> GetAllAsync(
+    private static async Task<Results<Ok<PaginetedDto<GenreResponseDTO>>, BadRequest<string>>> GetAllAsync(
         int page, int pageSize, SpotsomContext db, CancellationToken cancellationToken)
     {
+        if (page <= 0 || pageSize <= 0)
+        {
+            return TypedResults.BadRequest("Page and pageSize must be greater than zero.");
+        }
         var genres = await db.Genres.OrderBy(g => g.Name)
         .Take(pageSize * page)
         .Include(m => m.Musics)
@@ -51,9 +61,14 @@ public static class GenreEndpoint
         var genre = await db.Genres.Include(m => m.Musics)
             .ThenInclude(mg => mg.Music).FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
 
+        if (genre is null)
+        {
+            return TypedResults.NotFound($"Genre {id} not found.");
+        }
+
         GenreResponseDTO response = GenreResponse(genre);
 
-        return genre is null ? TypedResults.NotFound($"Genre {id} not found.") : TypedResults.Ok(response);
+        return TypedResults.Ok(response);
     }
 
 
@@ -83,8 +98,7 @@ public static class GenreEndpoint
 
         GenreResponseDTO response = GenreResponse(genre);
 
-        var id = genre.GetType().GetProperty("Id")?.GetValue(genre);
-        return TypedResults.Created($"/api/genres/{id}", response);
+        return TypedResults.Created($"/api/genres/{genre.Id}", response);
     }
 
 

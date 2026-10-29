@@ -1,5 +1,5 @@
 ###----------------INITIATION-----------
-POST http://localhost:5148/api/users/create
+POST http://127.0.0.1:5000/api/users/create
 Content-Type: application/json
 
 {
@@ -8,7 +8,7 @@ Content-Type: application/json
 
 
 ###
-POST http://localhost:5148/api/genres/create
+POST http://127.0.0.1:5000/api/genres/create
 Content-Type: application/json
 
 {
@@ -16,7 +16,7 @@ Content-Type: application/json
 }
 
 ###
-POST http://localhost:5148/api/artists/create
+POST http://127.0.0.1:5000/api/artists/create
 Content-Type: application/json
 
 {
@@ -26,7 +26,7 @@ Content-Type: application/json
 
 
 ###
-POST http://localhost:5148/api/playlists/create
+POST http://127.0.0.1:5000/api/playlists/create
 Content-Type: application/json
 
 {
@@ -35,7 +35,7 @@ Content-Type: application/json
 }
 
 ###
-POST http://localhost:5148/api/albums/create
+POST http://127.0.0.1:5000/api/albums/create
 Content-Type: application/json
 
 {
@@ -43,20 +43,6 @@ Content-Type: application/json
     "artistId": 1,
     "releaseDate": "2026-08-31"
 }
-
-###
-POST http://localhost:5148/api/musics/create
-Content-Type: application/json
-
-{
-    "name": "Just In The Wind",
-    "artistIds": [1],
-    "genreIds": [1,2],
-    "albumId": 1,
-    "releaseDate": "1989-04-12",
-    "duration": "00:03:26"
-}
-
 
 
 ###-----------------------USERS-------------------------#
@@ -70,7 +56,7 @@ POST http://127.0.0.1:5000/api/users/create
 Content-Type: application/json
 
 {
-    "name": "Admin"
+    "name": "Adminnnn"
 }
 
 ### 

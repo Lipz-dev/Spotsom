@@ -7,5 +7,5 @@ public record UpdateMusicDTO(
     int AlbumId,
     List<int> GenreIds,
     List<int> ArtistIds
-//IFormFile CapeImage
+
 );

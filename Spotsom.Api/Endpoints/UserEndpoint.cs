@@ -8,8 +8,14 @@ using System.Reflection.Metadata;
 
 namespace Spotsom.Api.Endpoints;
 
+/// <summary>
+/// Registers user routes and handles user profile CRUD operations.
+/// </summary>
 public static class UserEndpoint
 {
+    /// <summary>
+    /// Maps all user endpoints under the <c>/api/users</c> route group.
+    /// </summary>
     public static IEndpointRouteBuilder MapUserEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/users").WithTags("Users");
@@ -87,8 +93,8 @@ public static class UserEndpoint
 
         UserResponseDTO response = UserResponse(user);
 
-        var id = user.GetType().GetProperty("Id")?.GetValue(user);
-        return TypedResults.Created($"/api/users/{id}", response);
+
+        return TypedResults.Created($"/api/users/{user.Id}", response);
     }
 
     [HttpPut]

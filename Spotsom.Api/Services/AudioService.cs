@@ -2,12 +2,29 @@ using System.IO;
 
 namespace Spotsom.Api.Services;
 
+/// <summary>
+/// Stores uploaded MP3 files in the application's public audio directory.
+/// It validates the format and size before creating a unique file name.
+/// </summary>
 public class AudioStorageService(IWebHostEnvironment environment)
 {
+    private IWebHostEnvironment _environment = environment;
+
+    /// <summary>
+    /// Saves an accepted MP3 upload and returns its public URL path.
+    /// </summary>
+    /// <param name="audio">The uploaded audio file.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The public URL path of the saved audio file.</returns>
     public async Task<string> SaveAsync(
         IFormFile audio,
         CancellationToken cancellationToken)
     {
+        if (audio is null)
+        {
+            throw new ArgumentNullException(nameof(audio));
+        }
+
         var allowedExtensions = new[] { ".mp3" };
 
         var extension = Path.GetExtension(audio.FileName)
@@ -28,7 +45,7 @@ public class AudioStorageService(IWebHostEnvironment environment)
         var fileName = $"{Guid.NewGuid():N}{extension}";
 
         var folder = Path.Combine(
-            environment.ContentRootPath,
+            _environment.ContentRootPath,
             "wwwroot",
             "audio"
         );

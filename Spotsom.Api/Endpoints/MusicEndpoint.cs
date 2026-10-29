@@ -12,8 +12,14 @@ using System.Runtime.CompilerServices;
 
 namespace SpotSom.Api.Endpoints;
 
+/// <summary>
+/// Registers music routes, including upload, streaming, metadata updates, and deletion.
+/// </summary>
 public static class MusicEndpoint
 {
+    /// <summary>
+    /// Maps all music endpoints under the <c>/api/musics</c> route group.
+    /// </summary>
     public static IEndpointRouteBuilder MapMusicEndpoint(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/musics").WithTags("Musics");
@@ -29,13 +35,17 @@ public static class MusicEndpoint
     }
 
     [HttpGet]
-    private static async Task<Results<Ok<PaginetedDto<MusicResponseDTO>>, NotFound<string>>> GetAllAsync(
+    private static async Task<Results<Ok<PaginetedDto<MusicResponseDTO>>, BadRequest<string>, NotFound<string>>> GetAllAsync(
         int page, int pageSize,
         SpotsomContext db, CancellationToken cancellationToken)
     {
         if (await db.Musics.CountAsync() < 1)
         {
             return TypedResults.NotFound("Nothing music added");
+        }
+        if (page <= 0 || pageSize <= 0)
+        {
+            return TypedResults.BadRequest("Page and pageSize must be greater than zero.");
         }
 
         var musics = await db.Musics
@@ -44,7 +54,7 @@ public static class MusicEndpoint
         .Take(pageSize)
         .Include(m => m.Artists)
             .ThenInclude(ma => ma.Artist)
-        .Include(g => g.Genre)
+        .Include(g => g.Genres)
             .ThenInclude(mg => mg.Genre)
         .Include(a => a.Album).ToListAsync(cancellationToken);
 
@@ -68,10 +78,9 @@ public static class MusicEndpoint
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
 
-
         var music = await db.Musics
         .Include(m => m.Artists).ThenInclude(ma => ma.Artist)
-        .Include(g => g.Genre).ThenInclude(mg => mg.Genre)
+        .Include(g => g.Genres).ThenInclude(mg => mg.Genre)
         .Include(a => a.Album)
         .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
@@ -81,9 +90,9 @@ public static class MusicEndpoint
             return TypedResults.NotFound($"Music {id} not found.");
         }
 
-        if (music.Artists == null || music.Genre == null || music.Album == null)
+        if (music.Artists == null || music.Genres == null || music.Album == null)
         {
-            return TypedResults.BadRequest("Erro ao buscar a música. Verifique se os IDs de artistas e gêneros são válidos.");
+            return TypedResults.BadRequest("Error searching for the music. Verify that the artist and genre IDs are valid.");
         }
 
 
@@ -92,57 +101,43 @@ public static class MusicEndpoint
         return TypedResults.Ok(response);
     }
 
-    [HttpGet] //Music Player
+    // Streams the file with range-request support so clients can seek and resume playback.
+    [HttpGet]
     private static async Task<IResult> GetPlayerAsync(
         int id,
         SpotsomContext db,
-        IWebHostEnvironment environment,
+        MusicService musicService,
         CancellationToken cancellationToken)
     {
 
-        var audioPath = await db.Musics
-            .Where(m => m.Id == id)
-            .Select(m => m.AudioPath)
-            .FirstOrDefaultAsync(cancellationToken);
+        var filePath = await musicService.GetAudioFilePathAsync(id, cancellationToken);
 
-        if (audioPath is null)
-        {
-            return TypedResults.NotFound($"Music {id} not found.");
-        }
-
-        var storedPath = Uri.TryCreate(audioPath, UriKind.Absolute, out var uri) && uri.IsFile
-            ? uri.LocalPath
-            : audioPath;
-        var fileName = Path.GetFileName(storedPath);
-        if (string.IsNullOrWhiteSpace(fileName))
+        if (filePath is null)
         {
             return TypedResults.NotFound($"Audio for music {id} not found.");
         }
 
-        var filePath = Path.Combine(
-            environment.ContentRootPath,
-            "wwwroot",
-            "audio",
-            fileName
-        );
-        return File.Exists(filePath)
-            ? TypedResults.PhysicalFile(filePath, "audio/mpeg", enableRangeProcessing: true)
-            : TypedResults.NotFound($"Audio for music {id} not found.");
+        return TypedResults.PhysicalFile(
+            filePath,
+            "audio/mpeg",
+            enableRangeProcessing: true);
     }
 
-    [HttpPost] //Create Music
+    // Multipart upload: saves the audio file first, then persists the track metadata.
+    [HttpPost]
     private static async Task<Results<Created<MusicResponseDTO>, BadRequest<string>>>
      CreatedAsync(
             [FromForm] CreateMusicDTO input,
             MusicService musicService,
             AudioStorageService audioStorage,
             SpotsomContext db,
+            IWebHostEnvironment environment,
             CancellationToken cancellationToken)
     {
-        var musicExists = await musicService.MusicExists(cancellationToken, input.Audio.FileName);
-        if (musicExists.Contains("already exists"))
+        var musicExists = await musicService.MusicAlreadyExistsAsync(cancellationToken, input.Audio.FileName);
+        if (musicExists)
         {
-            return TypedResults.BadRequest(musicExists);
+            return TypedResults.BadRequest("Music already exists.");
         }
 
         var album = await db.Albums.FindAsync([1], cancellationToken);
@@ -150,7 +145,7 @@ public static class MusicEndpoint
         var genre = await db.Genres.FindAsync([1], cancellationToken);
         if (album is null || artist is null || genre is null)
         {
-            return TypedResults.BadRequest("Erro ao criar a música. Verifique se os IDs de artistas e gêneros são válidos.");
+            return TypedResults.BadRequest("Error creating the music. Verify that the artist and genre IDs are valid.");
         }
 
         var audioPath = await audioStorage.SaveAsync(
@@ -158,11 +153,18 @@ public static class MusicEndpoint
             cancellationToken
         );
 
+        var duration = await musicService.GetMusicDurationAsync(audioPath, environment, cancellationToken);
+
+        if (duration is null)
+        {
+            return TypedResults.BadRequest("Error getting the music duration.");
+        }
+
         var music = new Music
         {
             Name = input.Audio.FileName,
             AudioPath = audioPath,
-            Duration = input.Audio.Length > 0 ? TimeSpan.FromSeconds(input.Audio.Length / 1000.0) : TimeSpan.Zero,
+            Duration = (TimeSpan)duration,
             ReleaseDate = DateOnly.FromDateTime(DateTime.Now),
             AlbumId = album.Id,
             Album = album
@@ -174,13 +176,37 @@ public static class MusicEndpoint
             Artist = artist
         });
 
-        music.Genre.Add(new MusicGenres
+        music.Genres.Add(new MusicGenres
         {
-            GenreIds = genre.Id,
+            GenresId = genre.Id,
             Genre = genre
         });
 
+        if (!await musicService.VerifyCreateMusicAsync(music, cancellationToken))
+        {
+            return TypedResults.BadRequest("Error creating the music. Verify that the artist and genre IDs are valid.");
+        }
+
+        music.Artists.Clear();
+        music.Genres.Clear();
+
         db.Musics.Add(music);
+        await db.SaveChangesAsync(cancellationToken);
+
+        db.MusicsArtists.Add(new MusicsArtists
+        {
+            MusicsId = music.Id,
+            ArtistsId = artist.Id,
+            Artist = artist,
+            Music = music
+        });
+        db.MusicGenres.Add(new MusicGenres
+        {
+            MusicsId = music.Id,
+            GenresId = genre.Id,
+            Genre = genre,
+            Music = music
+        });
         await db.SaveChangesAsync(cancellationToken);
 
         MusicResponseDTO response = MusicResponse(music);
@@ -191,7 +217,8 @@ public static class MusicEndpoint
         );
     }
 
-    [HttpPut("{id}")] //Update Music
+    // Updates metadata and synchronizes the track's many-to-many relationships.
+    [HttpPut("{id}")]
     private static async Task<Results<Ok<MusicResponseDTO>, NotFound<string>, BadRequest<string>>> UpdateAsync(
         int id, UpdateMusicDTO input, SpotsomContext db,
         MusicService musicService, CancellationToken cancellationToken)
@@ -200,7 +227,7 @@ public static class MusicEndpoint
         .Include(a => a.Artists)
             .ThenInclude(am => am.Artist)
         .Include(al => al.Album)
-        .Include(g => g.Genre)
+        .Include(g => g.Genres)
             .ThenInclude(gm => gm.Genre).AsSplitQuery()
             .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
 
@@ -209,12 +236,7 @@ public static class MusicEndpoint
             return TypedResults.NotFound($"Music {id} not found.");
         }
 
-        // if (music.Artists == null || music.Artists.Count() < 1)
-        // {
-        //     return TypedResults.NotFound($"Artists for music {id} not found.");
-        // }
-
-
+        // The service adds and removes join records so stale artist links are not retained.
         var musicUpdateResponse = await musicService.UpdateMusicAsync(music, input, cancellationToken);
 
         if (musicUpdateResponse is null)
@@ -229,11 +251,32 @@ public static class MusicEndpoint
     private static async Task<Results<NoContent, NotFound<string>>> DeleteAsync(
     int id, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var music = await db.Musics.FindAsync([id], cancellationToken);
+        var music = await db.Musics
+            .Include(m => m.Artists)
+            .ThenInclude(ma => ma.Artist)
+            .Include(m => m.Genres)
+            .ThenInclude(mg => mg.Genre)
+            .FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
+
         if (music is null)
         {
             return TypedResults.NotFound($"Music {id} not found.");
         }
+
+        // Load playlists and relationship records before deleting the track.
+        // SQLite rejects the delete while any foreign key references the music.
+        var playlists = await db.Playlists
+            .Include(p => p.Musics)
+            .Where(p => p.Musics.Any(m => m.Id == id))
+            .ToListAsync(cancellationToken);
+
+        foreach (var playlist in playlists)
+        {
+            playlist.Musics.Remove(music);
+        }
+
+        music.Artists.Clear();
+        music.Genres.Clear();
 
         db.Musics.Remove(music);
         await db.SaveChangesAsync(cancellationToken);
@@ -248,7 +291,7 @@ public static class MusicEndpoint
         music.Duration,
         music.ReleaseDate,
         music.Artists.Select(a => a.Artist.Name).ToList(),
-        music.Genre.Select(g => g.Genre.Name).ToList(),
+        music.Genres.Select(g => g.Genre.Name).ToList(),
         music.Album.Name,
         $"/api/musics/player/{music.Id}"
         );

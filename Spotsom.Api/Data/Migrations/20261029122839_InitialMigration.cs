@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Spotsom.Api.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialMigrate : Microsoft.EntityFrameworkCore.Migrations.Migration
+    public partial class InitialMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -80,8 +80,7 @@ namespace Spotsom.Api.Data.Migrations
                         .Annotation("Sqlite:Autoincrement", true),
                     Name = table.Column<string>(type: "TEXT", nullable: false),
                     UserId = table.Column<int>(type: "INTEGER", nullable: false),
-                    ReleaseDate = table.Column<DateOnly>(type: "TEXT", nullable: false),
-                    Duration = table.Column<TimeOnly>(type: "TEXT", nullable: false)
+                    ReleaseDate = table.Column<DateOnly>(type: "TEXT", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -127,15 +126,16 @@ namespace Spotsom.Api.Data.Migrations
                 name: "MusicGenres",
                 columns: table => new
                 {
-                    MusicId = table.Column<int>(type: "INTEGER", nullable: false),
-                    GenreIds = table.Column<int>(type: "INTEGER", nullable: false)
+                    MusicsId = table.Column<int>(type: "INTEGER", nullable: false),
+                    GenresId = table.Column<int>(type: "INTEGER", nullable: false),
+                    MusicId = table.Column<int>(type: "INTEGER", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_MusicGenres", x => new { x.GenreIds, x.MusicId });
+                    table.PrimaryKey("PK_MusicGenres", x => new { x.GenresId, x.MusicsId });
                     table.ForeignKey(
-                        name: "FK_MusicGenres_Genres_GenreIds",
-                        column: x => x.GenreIds,
+                        name: "FK_MusicGenres_Genres_GenresId",
+                        column: x => x.GenresId,
                         principalTable: "Genres",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
@@ -143,20 +143,20 @@ namespace Spotsom.Api.Data.Migrations
                         name: "FK_MusicGenres_Musics_MusicId",
                         column: x => x.MusicId,
                         principalTable: "Musics",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateTable(
                 name: "MusicsArtists",
                 columns: table => new
                 {
-                    MusicId = table.Column<int>(type: "INTEGER", nullable: false),
-                    ArtistsId = table.Column<int>(type: "INTEGER", nullable: false)
+                    MusicsId = table.Column<int>(type: "INTEGER", nullable: false),
+                    ArtistsId = table.Column<int>(type: "INTEGER", nullable: false),
+                    MusicId = table.Column<int>(type: "INTEGER", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_MusicsArtists", x => new { x.ArtistsId, x.MusicId });
+                    table.PrimaryKey("PK_MusicsArtists", x => new { x.ArtistsId, x.MusicsId });
                     table.ForeignKey(
                         name: "FK_MusicsArtists_Artists_ArtistsId",
                         column: x => x.ArtistsId,
@@ -167,8 +167,7 @@ namespace Spotsom.Api.Data.Migrations
                         name: "FK_MusicsArtists_Musics_MusicId",
                         column: x => x.MusicId,
                         principalTable: "Musics",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateIndex(

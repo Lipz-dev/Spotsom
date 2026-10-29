@@ -3,8 +3,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace SpotSom.Api.Data;
 
+/// <summary>
+/// Provides startup-time database initialization and migration helpers.
+/// </summary>
 public static class DataExtensions
 {
+    /// <summary>
+    /// Applies pending EF Core migrations when the application starts.
+    /// </summary>
     public static void MigrationDb(this WebApplication app)
     {
         using var scope = app.Services.CreateScope();
@@ -13,6 +19,9 @@ public static class DataExtensions
         dbContext.Database.Migrate();
     }
 
+    /// <summary>
+    /// Registers SQLite and seeds the default catalog records on first database creation.
+    /// </summary>
     public static void AddGenreSqlite(this WebApplicationBuilder builder)
     {
         var connString = builder.Configuration.GetConnectionString("Spotsom");

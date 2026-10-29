@@ -8,8 +8,14 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Spotsom.Api.Endpoints;
 
+/// <summary>
+/// Registers artist routes and exposes their associated music catalog.
+/// </summary>
 public static class ArtistEndpoint
 {
+    /// <summary>
+    /// Maps all artist endpoints under the <c>/api/artists</c> route group.
+    /// </summary>
     public static IEndpointRouteBuilder MapArtistEndpoints(this IEndpointRouteBuilder endpoints)
     {
         var group = endpoints.MapGroup("/api/artists").WithTags("Artists");
@@ -25,10 +31,15 @@ public static class ArtistEndpoint
 
 
     [HttpGet]
-    private static async Task<Ok<PaginetedDto<ArtistResponseDTO>>> GetAllAsync(
+    private static async Task<Results<Ok<PaginetedDto<ArtistResponseDTO>>, BadRequest<string>>> GetAllAsync(
         int page, int pageSize,
         SpotsomContext db, CancellationToken cancellationToken)
     {
+
+        if (page <= 0 || pageSize <= 0)
+        {
+            return TypedResults.BadRequest("Page and pageSize must be greater than zero.");
+        }
 
         var artists = await db.Artists.OrderBy(m => m.Id)
             .Skip((page - 1) * pageSize)
@@ -61,7 +72,7 @@ public static class ArtistEndpoint
 
         if (artist is null)
         {
-            return TypedResults.NotFound($"artist {id} não encontrado.");
+            return TypedResults.NotFound($"Artist {id} not found.");
         }
 
         ArtistResponseDTO response = ArtistResponse(artist);
@@ -83,8 +94,7 @@ public static class ArtistEndpoint
 
         ArtistResponseDTO response = ArtistResponse(artist);
 
-        var id = artist.GetType().GetProperty("Id")?.GetValue(artist);
-        return TypedResults.Created($"/api/artists/{id}", response);
+        return TypedResults.Created($"/api/artists/{artist.Id}", response);
     }
 
     [HttpPut]

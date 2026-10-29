@@ -2,6 +2,9 @@ using Microsoft.AspNetCore.Http;
 using System.ComponentModel.DataAnnotations;
 namespace SpotSom.Api.Models;
 
+/// <summary>
+/// Represents a named collection of tracks owned by a user.
+/// </summary>
 public class Playlist
 {
     public int Id { get; set; }
@@ -11,5 +14,4 @@ public class Playlist
     public required int UserId { get; set; }
     public List<Music> Musics { get; set; } = [];
     public DateOnly ReleaseDate { get; set; }
-    public TimeOnly Duration { get; set; }
 }

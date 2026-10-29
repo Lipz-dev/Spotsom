@@ -2,52 +2,123 @@ using SpotSom.Api.Dtos;
 using SpotSom.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using SpotSom.Api.Models;
+using System.IO;
 
 namespace SpotSom.Api.Services;
 
-public class MusicService(SpotsomContext context)
+/// <summary>
+/// Provides music-specific validation, metadata, and relationship-update operations.
+/// </summary>
+public class MusicService(SpotsomContext context, IWebHostEnvironment environment)
 {
     private SpotsomContext _context = context;
+    private IWebHostEnvironment _environment = environment;
 
-    public async Task<bool> VerifyCreateMusic(CancellationToken cancellationToken)
+    /// <summary>
+    /// Checks that the album, artists, and genres referenced by a new music entity exist.
+    /// </summary>
+    /// <param name="input">The music entity to validate.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>True if all referenced entities exist; otherwise, false.</returns>
+    public async Task<bool> VerifyCreateMusicAsync(Music input, CancellationToken cancellationToken)
     {
         var album = await _context.Albums
-            .FirstOrDefaultAsync(a => a.Id == 1, cancellationToken);
+            .FirstOrDefaultAsync(a => a.Id == input.AlbumId, cancellationToken);
 
         if (album is null)
         {
             return false;
         }
-
-        var artists = await _context.Artists
-            .Where(a => a.Id == 1)
-            .ToListAsync(cancellationToken);
-
-        if (artists is null || artists.Count() < 1)
+        foreach (var artistId in input.Artists.Select(am => am.ArtistsId))
         {
-            return false;
+            var artist = await _context.Artists
+                .FirstOrDefaultAsync(a => a.Id == artistId, cancellationToken);
+
+            if (artist is null || artistId <= 0)
+            {
+                return false;
+            }
         }
 
-        var genres = await _context.Genres
-            .Where(g => g.Id == 1)
-            .ToListAsync(cancellationToken);
-
-        if (genres is null || genres.Count() < 1)
+        foreach (var genreId in input.Genres.Select(gm => gm.GenresId))
         {
-            return false;
+            var genre = await _context.Genres
+                .FirstOrDefaultAsync(g => g.Id == genreId, cancellationToken);
+
+            if (genre is null || genreId <= 0)
+            {
+                return false;
+            }
         }
 
         return true;
     }
 
-    public async Task<string> MusicExists(CancellationToken cancellationToken, string name)
+    /// <summary>
+    /// Determines whether the supplied name is not already used by a music record.
+    /// The comparison is case-insensitive.
+    /// </summary>
+    /// <param name="cancellationToken">A cancellation token.</param> 
+    /// <param name="name">The name to check for existence.</param>
+    /// <returns>True if a music with the same name exists; otherwise, false.</returns>
+    public async Task<bool> MusicAlreadyExistsAsync(CancellationToken cancellationToken, string name)
     {
         var musicTeste = await _context.Musics.Select(m => m.Name.ToLower()).ToListAsync(cancellationToken);
         var musicFilter = musicTeste.Where(m => m == name.ToLower());
 
-        return !musicFilter.Any() ? $"Music {name} does not exist." : $"Music {name} already exists.";
+        return musicFilter.Any();
     }
 
+    /// <summary>
+    /// Reads the duration of an MP3 stored under the application's public audio folder.
+    /// Corrupt files are removed because they cannot be played reliably.
+    /// </summary>
+    /// <param name="audioPath">The relative path to the audio file.</param>
+    /// <param name="environment">The web host environment.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The duration of the audio file, or null if the file is missing or corrupt.</returns>
+    public async Task<TimeSpan?> GetMusicDurationAsync(string audioPath, IWebHostEnvironment environment, CancellationToken cancellationToken)
+    {
+
+        var fileName = Path.GetFileName(audioPath);
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return null;
+        }
+
+        var filePath = Path.Combine(
+            environment.ContentRootPath,
+            "wwwroot",
+            "audio",
+            fileName
+        );
+
+        if (!File.Exists(filePath))
+        {
+            return null;
+        }
+
+
+        try
+        {
+            using var audioFile = TagLib.File.Create(filePath);
+            return audioFile.Properties.Duration;
+        }
+        catch (TagLib.CorruptFileException)
+        {
+            File.Delete(filePath);
+            return null;
+        }
+
+    }
+
+    /// <summary>
+    /// Updates editable music metadata and synchronizes its artist and genre relationships.
+    /// </summary>
+    /// <param name="music">The music entity to update.</param>
+    /// <param name="input">The DTO containing the new metadata and relationship IDs.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>A DTO representing the updated music, or null if the music was not found.</returns>
     public async Task<MusicResponseDTO?> UpdateMusicAsync(Music music, UpdateMusicDTO input, CancellationToken cancellationToken)
     {
         var artistIds = input.ArtistIds.Distinct().ToHashSet();
@@ -61,10 +132,6 @@ public class MusicService(SpotsomContext context)
             .Where(g => genreIds.Contains(g.Id))
             .ToListAsync(cancellationToken);
 
-        // if (album is null || artists.Count != artistIds.Count || genres.Count != genreIds.Count)
-        // {
-        //     return null;
-        // }
 
         music.Name = input.Name;
         music.AlbumId = input.AlbumId;
@@ -85,29 +152,29 @@ public class MusicService(SpotsomContext context)
         {
             music.Artists.Add(new MusicsArtists
             {
-                MusicId = music.Id,
+                MusicsId = music.Id,
                 ArtistsId = artist.Id,
                 Artist = artist
             });
         }
 
-        var currentGenreIds = music.Genre
-            .Select(g => g.GenreIds)
+        var currentGenreIds = music.Genres
+            .Select(g => g.GenresId)
             .ToHashSet();
 
-        foreach (var relation in music.Genre
-            .Where(g => !genreIds.Contains(g.GenreIds))
+        foreach (var relation in music.Genres
+            .Where(g => !genreIds.Contains(g.GenresId))
             .ToList())
         {
-            music.Genre.Remove(relation);
+            music.Genres.Remove(relation);
         }
 
         foreach (var genre in genres.Where(g => !currentGenreIds.Contains(g.Id)))
         {
-            music.Genre.Add(new MusicGenres
+            music.Genres.Add(new MusicGenres
             {
-                MusicId = music.Id,
-                GenreIds = genre.Id,
+                MusicsId = music.Id,
+                GenresId = genre.Id,
                 Genre = genre
             });
         }
@@ -116,7 +183,7 @@ public class MusicService(SpotsomContext context)
 
         var musicResponse = await _context.Musics.Include(a => a.Artists)
             .ThenInclude(am => am.Artist)
-        .Include(g => g.Genre)
+        .Include(g => g.Genres)
             .ThenInclude(gm => gm.Genre)
         .Include(al => al.Album)
         .FirstAsync(m => m.Id == music.Id, cancellationToken);
@@ -126,15 +193,51 @@ public class MusicService(SpotsomContext context)
             musicResponse.Duration,
             musicResponse.ReleaseDate,
             musicResponse.Artists.Select(a => a.Artist.Name).ToList(),
-            musicResponse.Genre.Select(g => g.Genre.Name).ToList(),
+            musicResponse.Genres.Select(g => g.Genre.Name).ToList(),
             musicResponse.Album.Name,
             musicResponse.AudioPath
 
         );
     }
 
-    internal void UpdateMusicAsync(Music music, UpdateMusicDTO input)
+    /// <summary>
+    /// Gets the file path of the audio file for a given music ID.
+    /// </summary>
+    /// <param name="musicId">The ID of the music.</param>
+    /// <param name="environment">The web host environment.</param>
+    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <returns>The file path of the audio file, or null if the music or file does not exist.</returns>
+    public async Task<string?> GetAudioFilePathAsync(
+        int musicId,
+        CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
+        var audioPath = await _context.Musics
+            .Where(music => music.Id == musicId)
+            .Select(music => music.AudioPath)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(audioPath))
+        {
+            return null;
+        }
+
+        var storedPath = Uri.TryCreate(audioPath, UriKind.Absolute, out var uri) && uri.IsFile
+            ? uri.LocalPath
+            : audioPath;
+
+        var fileName = Path.GetFileName(storedPath);
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return null;
+        }
+
+        var filePath = Path.Combine(
+            _environment.ContentRootPath,
+            "wwwroot",
+            "audio",
+            fileName);
+
+        return File.Exists(filePath) ? filePath : null;
     }
 }
