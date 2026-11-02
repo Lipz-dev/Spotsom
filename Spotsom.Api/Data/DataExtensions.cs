@@ -9,6 +9,15 @@ namespace SpotSom.Api.Data;
 public static class DataExtensions
 {
     /// <summary>
+    /// Excludes entities whose public name is the fallback "Unknown" value.
+    /// </summary>
+    public static IQueryable<T> WithoutUnknown<T>(this IQueryable<T> query) where T : class
+    {
+        return query.Where(entity =>
+            EF.Property<string>(entity, "Name").ToLower() != "unknown");
+    }
+
+    /// <summary>
     /// Applies pending EF Core migrations when the application starts.
     /// </summary>
     public static void MigrationDb(this WebApplication app)

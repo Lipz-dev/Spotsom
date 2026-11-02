@@ -5,8 +5,8 @@ using System.ComponentModel.DataAnnotations;
 namespace SpotSom.Api.Dtos;
 
 public record MusicResponseDTO(
+    [Required] int Id,
     [Required][StringLength(30)] string Name,
-
     [Required] TimeSpan Duration,
     [Required] DateOnly ReleaseDate,
     [Required] List<string> Artists,

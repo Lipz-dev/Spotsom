@@ -38,13 +38,14 @@ public static class PlaylistEndpoints
         {
             return TypedResults.NotFound("you not create nothing playlist");
         }
-        var playlists = await db.Playlists
+        var visiblePlaylists = db.Playlists.WithoutUnknown();
+        var playlists = await visiblePlaylists
             .OrderBy(p => p.Name)
             .Skip((page - 1) * pageSize).Take(pageSize)
             .Include(p => p.User).Include(m => m.Musics)
             .ToListAsync(cancellationToken);
 
-        int totalItems = await db.Playlists.CountAsync(cancellationToken);
+        int totalItems = await visiblePlaylists.CountAsync(cancellationToken);
         int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
 
         var response = new PaginetedDto<PlaylistResponseDTO>(
@@ -175,11 +176,16 @@ public static class PlaylistEndpoints
     private static async Task<Results<NoContent, NotFound<string>>> DeleteAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var playlist = await db.Playlists.FindAsync([id], cancellationToken);
+        var playlist = await db.Playlists
+            .Include(p => p.Musics)
+            .FirstOrDefaultAsync(p => p.Id == id, cancellationToken);
+
         if (playlist is null)
         {
             return TypedResults.NotFound($"Playlist {id} not found.");
         }
+
+        playlist.Musics.Clear();
 
         db.Playlists.Remove(playlist);
         await db.SaveChangesAsync(cancellationToken);
@@ -189,10 +195,10 @@ public static class PlaylistEndpoints
     private static PlaylistResponseDTO PlaylistResponse(Playlist playlist)
     {
         return new PlaylistResponseDTO(
+            playlist.Id,
             playlist.Name,
             playlist.ReleaseDate,
             playlist.Musics.Select(m => m.Name).ToList()
         );
     }
 };
-

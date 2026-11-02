@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations;
 namespace SpotSom.Api.Dtos;
 
 public record ArtistResponseDTO(
+    [Required] int Id,
     [Required][StringLength(25)] string Name,
-    List<string> Musics
-//IFormFile? ImageCape
+    [Required] List<string> Musics
 );

@@ -48,7 +48,8 @@ public static class MusicEndpoint
             return TypedResults.BadRequest("Page and pageSize must be greater than zero.");
         }
 
-        var musics = await db.Musics
+        var visibleMusics = db.Musics.WithoutUnknown();
+        var musics = await visibleMusics
         .OrderBy(m => m.Name)
         .Skip((page - 1) * pageSize)
         .Take(pageSize)
@@ -58,7 +59,7 @@ public static class MusicEndpoint
             .ThenInclude(mg => mg.Genre)
         .Include(a => a.Album).ToListAsync(cancellationToken);
 
-        int totalItems = await db.Musics.CountAsync(cancellationToken);
+        int totalItems = await visibleMusics.CountAsync(cancellationToken);
         int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
 
         var response = new PaginetedDto<MusicResponseDTO>(
@@ -287,6 +288,7 @@ public static class MusicEndpoint
     {
         return new MusicResponseDTO
         (
+        music.Id,
         music.Name,
         music.Duration,
         music.ReleaseDate,

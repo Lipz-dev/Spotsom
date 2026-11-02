@@ -1,0 +1,12 @@
+.git
+.vs
+.vscode
+**/bin
+**/obj
+**/node_modules
+**/dist
+Spotsom.db
+Spotsom.db-shm
+Spotsom.db-wal
+*.db-shm
+*.db-wal

@@ -119,7 +119,7 @@ public class MusicService(SpotsomContext context, IWebHostEnvironment environmen
     /// <param name="input">The DTO containing the new metadata and relationship IDs.</param>
     /// <param name="cancellationToken">A cancellation token.</param>
     /// <returns>A DTO representing the updated music, or null if the music was not found.</returns>
-    public async Task<MusicResponseDTO?> UpdateMusicAsync(Music music, UpdateMusicDTO input, CancellationToken cancellationToken)
+    public async Task<MusicResponseDTO> UpdateMusicAsync(Music music, UpdateMusicDTO input, CancellationToken cancellationToken)
     {
         var artistIds = input.ArtistIds.Distinct().ToHashSet();
         var genreIds = input.GenreIds.Distinct().ToHashSet();
@@ -189,14 +189,20 @@ public class MusicService(SpotsomContext context, IWebHostEnvironment environmen
         .FirstAsync(m => m.Id == music.Id, cancellationToken);
 
         return new MusicResponseDTO(
-            musicResponse.Name,
-            musicResponse.Duration,
-            musicResponse.ReleaseDate,
-            musicResponse.Artists.Select(a => a.Artist.Name).ToList(),
-            musicResponse.Genres.Select(g => g.Genre.Name).ToList(),
-            musicResponse.Album.Name,
-            musicResponse.AudioPath
-
+            Id: musicResponse.Id,
+            Name: musicResponse.Name,
+            Duration: musicResponse.Duration,
+            ReleaseDate: musicResponse.ReleaseDate,
+            Artists: musicResponse.Artists
+                .Where(a => a.Artist is not null)
+                .Select(a => a.Artist.Name)
+                .ToList(),
+            Genres: musicResponse.Genres
+                .Where(g => g.Genre is not null)
+                .Select(g => g.Genre.Name)
+                .ToList(),
+            Album: musicResponse.Album?.Name ?? string.Empty,
+            AudioUrl: musicResponse.AudioPath
         );
     }
 

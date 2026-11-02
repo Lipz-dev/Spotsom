@@ -2,7 +2,6 @@
 using Spotsom.Api.Endpoints;
 using SpotSom.Api.Data;
 using SpotSom.Api.Endpoints;
-using System.Net;
 using Spotsom.Api.Services;
 using SpotSom.Api.Services;
 using Microsoft.AspNetCore.Mvc;
@@ -16,7 +15,7 @@ builder.Services.AddScoped<AudioStorageService>();
 builder.Services.AddScoped<MusicService>();
 builder.WebHost.ConfigureKestrel(options =>
 {
-    options.Listen(IPAddress.Loopback, 5000);
+    options.ListenAnyIP(5000);
 });
 builder.Services.AddControllers(options =>
 {
@@ -26,11 +25,18 @@ builder.Services.AddControllers(options =>
 
 builder.Services.AddAntiforgery();
 
-var connString = "Data Source=Spotsom.db";
-builder.Services.AddSqlite<SpotsomContext>(connString);
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy => policy
+        .AllowAnyOrigin()
+        .AllowAnyHeader()
+        .AllowAnyMethod());
+});
 
 var app = builder.Build();
 
+app.UseStaticFiles();
+app.UseCors("Frontend");
 app.UseAntiforgery();
 app.MapArtistEndpoints();
 app.MapAlbumEndpoints();

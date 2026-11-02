@@ -44,6 +44,8 @@ Endpoints that support pagination return:
 }
 ```
 
+> **Unknown-record filter:** in the paginated queries for users, artists, genres, albums, songs, and playlists, records named `Unknown` are excluded from the results. The filter is case-insensitive and is also applied when calculating `totalItems`.
+
 ---
 
 ## Users
@@ -60,6 +62,16 @@ Example: `GET /api/users/page=1/size=10`
 
 ```http
 GET /api/users/{id}
+```
+
+Example response:
+
+```json
+{
+  "id": 1,
+  "name": "John",
+  "releaseDate": "2026-10-29"
+}
 ```
 
 ### Create a user
@@ -125,6 +137,7 @@ Example response:
 
 ```json
 {
+  "id": 1,
   "name": "Travis Scott",
   "musics": []
 }
@@ -161,6 +174,16 @@ GET /api/genres/page={page}/size={pageSize}
 
 ```http
 GET /api/genres/{id}
+```
+
+Example response:
+
+```json
+{
+  "id": 1,
+  "name": "Rock",
+  "musics": []
+}
 ```
 
 ### Create a genre
@@ -207,6 +230,18 @@ GET /api/albums/page={page}/size={pageSize}
 
 ```http
 GET /api/albums/{id}
+```
+
+Example response:
+
+```json
+{
+  "id": 1,
+  "name": "New album",
+  "musics": [],
+  "artist": "Travis Scott",
+  "releaseDate": "2026-10-29"
+}
 ```
 
 ### Create an album
@@ -274,6 +309,7 @@ Example response:
 
 ```json
 {
+  "id": 1,
   "name": "music.mp3",
   "duration": "00:03:30",
   "releaseDate": "2026-10-29",
@@ -349,6 +385,17 @@ GET /api/playlists/page={page}/size={pageSize}
 
 ```http
 GET /api/playlists/{id}
+```
+
+Example response:
+
+```json
+{
+  "id": 1,
+  "name": "My playlist",
+  "releaseDate": "2026-10-29",
+  "musics": []
+}
 ```
 
 ### Create a playlist

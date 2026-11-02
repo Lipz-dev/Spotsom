@@ -42,12 +42,13 @@ public static class AlbumEndpoint
         {
             return TypedResults.BadRequest("Page and pageSize must be greater than zero.");
         }
-        var albums = await db.Albums.OrderBy(a => a.Id)
+        var visibleAlbums = db.Albums.WithoutUnknown();
+        var albums = await visibleAlbums.OrderBy(a => a.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize).Include(a => a.Artist)
             .Include(m => m.Musics).ToListAsync(cancellationToken);
 
-        int totalItems = await db.Albums.CountAsync(cancellationToken);
+        int totalItems = await visibleAlbums.CountAsync(cancellationToken);
         int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
 
         if (page > totalPages)
@@ -204,10 +205,28 @@ public static class AlbumEndpoint
     private static async Task<Results<NoContent, NotFound<string>>> DeleteAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var album = await db.Albums.FindAsync([id], cancellationToken);
+        var album = await db.Albums
+        .Include(a => a.Artist)
+        .Include(m => m.Musics)
+        .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+
+
         if (album is null)
         {
             return TypedResults.NotFound($"Album {id} not found.");
+        }
+
+        var musicsToRemove = await db.Musics.Where(m => m.AlbumId == album.Id).ToListAsync(cancellationToken);
+        var artist = await db.Artists.Include(a => a.Albums).FirstOrDefaultAsync(a => a.Id == album.ArtistId, cancellationToken);
+
+        if (artist is null)
+        {
+            return TypedResults.NotFound($"Album {id} is not associated with any artist.");
+        }
+        artist.Albums.Remove(album);
+        foreach (var music in musicsToRemove)
+        {
+            db.Musics.Remove(music);
         }
 
         db.Albums.Remove(album);
@@ -218,9 +237,11 @@ public static class AlbumEndpoint
     private static AlbumResponseDTO AlbumResponse(Album album)
     {
         return new AlbumResponseDTO(
-        album.Name,
-        album.Musics.Select(m => m.Name).ToList(),
-        album.Artist.Name,
-        album.ReleaseDate);
+            album.Id,
+            album.Name,
+            album.Musics.Select(m => m.Name).ToList(),
+            album.Artist.Name,
+            album.ReleaseDate
+        );
     }
 }

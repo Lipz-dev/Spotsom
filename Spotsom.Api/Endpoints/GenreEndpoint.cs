@@ -36,12 +36,15 @@ public static class GenreEndpoint
         {
             return TypedResults.BadRequest("Page and pageSize must be greater than zero.");
         }
-        var genres = await db.Genres.OrderBy(g => g.Name)
-        .Take(pageSize * page)
+        var visibleGenres = db.Genres.WithoutUnknown();
+        var genres = await visibleGenres.OrderBy(g => g.Name)
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
         .Include(m => m.Musics)
             .ThenInclude(mg => mg.Music).ToListAsync(cancellationToken);
 
-        int totalItems = await db.Genres.CountAsync(cancellationToken);
+        int totalItems = await visibleGenres.CountAsync(cancellationToken);
+        int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
 
 
         var response = new PaginetedDto<GenreResponseDTO>(genres.Select(g => GenreResponse(g)
@@ -49,7 +52,7 @@ public static class GenreEndpoint
         page,
         pageSize,
         totalItems,
-        0);
+        totalPages);
 
         return TypedResults.Ok(response);
     }
@@ -123,9 +126,16 @@ public static class GenreEndpoint
     private static async Task<Results<NoContent, NotFound<string>>> DeleteAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var genre = await db.Genres.FindAsync([id], cancellationToken);
+        var genre = await db.Genres
+            .Include(g => g.Musics)
+                .ThenInclude(mg => mg.Music)
+            .FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
         if (genre is null)
+        {
             return TypedResults.NotFound($"Genre {id} not found.");
+        }
+
+        genre.Musics.Clear();
 
         db.Genres.Remove(genre);
         await db.SaveChangesAsync(cancellationToken);
@@ -135,7 +145,14 @@ public static class GenreEndpoint
 
     private static GenreResponseDTO GenreResponse(Genre genre)
     {
-        GenreResponseDTO responseDTO = new(genre.Name, genre.Musics.Select(m => m.Music.Name).ToList());
+        GenreResponseDTO responseDTO = new(
+            genre.Id,
+            genre.Name,
+            genre.Musics
+                .Where(m => m.Music is not null)
+                .Select(m => m.Music!.Name)
+                .ToList()
+        );
         return responseDTO;
     }
 }

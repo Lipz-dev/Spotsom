@@ -112,12 +112,9 @@ namespace Spotsom.Api.Data.Migrations
                     b.Property<int>("MusicsId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("MusicId")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("GenresId", "MusicsId");
 
-                    b.HasIndex("MusicId");
+                    b.HasIndex("MusicsId");
 
                     b.ToTable("MusicGenres");
                 });
@@ -130,12 +127,9 @@ namespace Spotsom.Api.Data.Migrations
                     b.Property<int>("MusicsId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("MusicId")
-                        .HasColumnType("INTEGER");
-
                     b.HasKey("ArtistsId", "MusicsId");
 
-                    b.HasIndex("MusicId");
+                    b.HasIndex("MusicsId");
 
                     b.ToTable("MusicsArtists");
                 });
@@ -184,7 +178,7 @@ namespace Spotsom.Api.Data.Migrations
             modelBuilder.Entity("SpotSom.Api.Models.Album", b =>
                 {
                     b.HasOne("SpotSom.Api.Models.Artist", "Artist")
-                        .WithMany()
+                        .WithMany("Albums")
                         .HasForeignKey("ArtistId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -217,7 +211,9 @@ namespace Spotsom.Api.Data.Migrations
 
                     b.HasOne("SpotSom.Api.Models.Music", "Music")
                         .WithMany("Genres")
-                        .HasForeignKey("MusicId");
+                        .HasForeignKey("MusicsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Genre");
 
@@ -234,7 +230,9 @@ namespace Spotsom.Api.Data.Migrations
 
                     b.HasOne("SpotSom.Api.Models.Music", "Music")
                         .WithMany("Artists")
-                        .HasForeignKey("MusicId");
+                        .HasForeignKey("MusicsId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Artist");
 
@@ -259,6 +257,8 @@ namespace Spotsom.Api.Data.Migrations
 
             modelBuilder.Entity("SpotSom.Api.Models.Artist", b =>
                 {
+                    b.Navigation("Albums");
+
                     b.Navigation("Musics");
                 });
 

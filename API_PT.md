@@ -44,6 +44,8 @@ Os endpoints com paginação retornam:
 }
 ```
 
+> **Filtro de registros desconhecidos:** nas consultas paginadas de usuários, artistas, gêneros, álbuns, músicas e playlists, os registros cujo nome seja `Unknown` não aparecem nos resultados. O filtro não diferencia maiúsculas de minúsculas e também é considerado no cálculo de `totalItems`.
+
 ---
 
 ## Usuários
@@ -60,6 +62,16 @@ Exemplo: `GET /api/users/page=1/size=10`
 
 ```http
 GET /api/users/{id}
+```
+
+Resposta de exemplo:
+
+```json
+{
+  "id": 1,
+  "name": "João",
+  "releaseDate": "2026-10-29"
+}
 ```
 
 ### Criar usuário
@@ -125,6 +137,7 @@ Resposta de exemplo:
 
 ```json
 {
+  "id": 1,
   "name": "Travis Scott",
   "musics": []
 }
@@ -161,6 +174,16 @@ GET /api/genres/page={page}/size={pageSize}
 
 ```http
 GET /api/genres/{id}
+```
+
+Resposta de exemplo:
+
+```json
+{
+  "id": 1,
+  "name": "Rock",
+  "musics": []
+}
 ```
 
 ### Criar gênero
@@ -207,6 +230,18 @@ GET /api/albums/page={page}/size={pageSize}
 
 ```http
 GET /api/albums/{id}
+```
+
+Resposta de exemplo:
+
+```json
+{
+  "id": 1,
+  "name": "Novo álbum",
+  "musics": [],
+  "artist": "Travis Scott",
+  "releaseDate": "2026-10-29"
+}
 ```
 
 ### Criar álbum
@@ -274,6 +309,7 @@ Resposta de exemplo:
 
 ```json
 {
+  "id": 1,
   "name": "music.mp3",
   "duration": "00:03:30",
   "releaseDate": "2026-10-29",
@@ -349,6 +385,17 @@ GET /api/playlists/page={page}/size={pageSize}
 
 ```http
 GET /api/playlists/{id}
+```
+
+Resposta de exemplo:
+
+```json
+{
+  "id": 1,
+  "name": "Minha playlist",
+  "releaseDate": "2026-10-29",
+  "musics": []
+}
 ```
 
 ### Criar playlist

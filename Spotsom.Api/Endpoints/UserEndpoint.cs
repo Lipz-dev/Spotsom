@@ -33,11 +33,13 @@ public static class UserEndpoint
     private static async Task<Results<Ok<PaginetedDto<UserResponseDTO>>, NotFound<string>>> GetAllAsync(
         int page, int pageSize, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var users = await db.Users.OrderBy(u => u.Id)
-            .Take(pageSize * page)
+        var visibleUsers = db.Users.WithoutUnknown();
+        var users = await visibleUsers.OrderBy(u => u.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        int totalItems = await db.Users.CountAsync(cancellationToken);
+        int totalItems = await visibleUsers.CountAsync(cancellationToken);
         int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
 
         var response = new PaginetedDto<UserResponseDTO>(
@@ -126,7 +128,6 @@ public static class UserEndpoint
             return TypedResults.NotFound($"User {id} not found.");
         }
 
-
         db.Users.Remove(user);
         await db.SaveChangesAsync(cancellationToken);
         return TypedResults.NoContent();
@@ -135,6 +136,7 @@ public static class UserEndpoint
     private static UserResponseDTO UserResponse(User user)
     {
         return new UserResponseDTO(
+            user.Id,
             user.Name,
             user.ReleaseDate
         );

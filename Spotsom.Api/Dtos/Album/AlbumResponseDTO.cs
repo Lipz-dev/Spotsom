@@ -1,11 +1,13 @@
 
 
+using System.ComponentModel.DataAnnotations;
+
 namespace SpotSom.Api.Dtos;
 
 public record AlbumResponseDTO(
-    string name,
-    //IFormFile? ImageCape,
-    List<string> Musics,
-    string Artist,
-    DateOnly ReleaseDate
+    [Required] int Id,
+    [Required][StringLength(30)] string Name,
+    [Required] List<string> Musics,
+    [Required] string Artist,
+    [Required] DateOnly ReleaseDate
 );

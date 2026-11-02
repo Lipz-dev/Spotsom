@@ -41,14 +41,15 @@ public static class ArtistEndpoint
             return TypedResults.BadRequest("Page and pageSize must be greater than zero.");
         }
 
-        var artists = await db.Artists.OrderBy(m => m.Id)
+        var visibleArtists = db.Artists.WithoutUnknown();
+        var artists = await visibleArtists.OrderBy(m => m.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Include(m => m.Musics)
                 .ThenInclude(ma => ma.Music)
             .ToListAsync(cancellationToken);
 
-        int totalItems = await db.Artists.CountAsync(cancellationToken);
+        int totalItems = await visibleArtists.CountAsync(cancellationToken);
         int totalPages = (int)Math.Ceiling((double)totalItems / pageSize);
 
         var response = new PaginetedDto<ArtistResponseDTO>(
@@ -121,9 +122,17 @@ public static class ArtistEndpoint
     private static async Task<Results<NoContent, NotFound<string>>> DeleteAsync(
         int id, SpotsomContext db, CancellationToken cancellationToken)
     {
-        var artist = await db.Artists.FindAsync([id], cancellationToken);
+        var artist = await db.Artists
+        .Include(a => a.Musics)
+            .ThenInclude(ma => ma.Music)
+        .FirstOrDefaultAsync(a => a.Id == id, cancellationToken);
+
         if (artist is null)
+        {
             return TypedResults.NotFound($"Artist {id} not found.");
+        }
+
+        artist.Musics.Clear();
 
         db.Artists.Remove(artist);
         await db.SaveChangesAsync(cancellationToken);
@@ -132,12 +141,13 @@ public static class ArtistEndpoint
 
     private static ArtistResponseDTO ArtistResponse(Artist artist)
     {
-        var musics = artist.Musics.Select(m => m.Music).ToList();
-
-
-
-        return new ArtistResponseDTO(artist.Name,
-            musics.Select(m => m.Name).ToList()
+        return new ArtistResponseDTO(
+            artist.Id,
+            artist.Name,
+            artist.Musics
+                .Where(m => m.Music is not null)
+                .Select(m => m.Music!.Name)
+                .ToList()
             );
     }
 }
