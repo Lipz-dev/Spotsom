@@ -63,10 +63,13 @@ public class MusicService(SpotsomContext context, IWebHostEnvironment environmen
     /// <returns>True if a music with the same name exists; otherwise, false.</returns>
     public async Task<bool> MusicAlreadyExistsAsync(CancellationToken cancellationToken, string name)
     {
-        var musicTeste = await _context.Musics.Select(m => m.Name.ToLower()).ToListAsync(cancellationToken);
-        var musicFilter = musicTeste.Where(m => m == name.ToLower());
+        var exists = await _context.Musics
+            .AnyAsync(
+                m => m.Name.ToLower() == name.ToLower(),
+                cancellationToken
+            );
 
-        return musicFilter.Any();
+        return exists;
     }
 
     /// <summary>

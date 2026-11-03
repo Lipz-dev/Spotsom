@@ -116,12 +116,12 @@ public static class AlbumEndpoint
 
         if (album is not null)
         {
-            var albumTeste = await db.Users.Select(m => m.Name.ToLower()).ToListAsync(cancellationToken);
+            var albumTeste = await db.Albums.Select(m => m.Name.ToLower()).ToListAsync(cancellationToken);
             var albumFilter = albumTeste.Where(m => m == input.Name.ToLower());
 
             if (albumFilter.Count() > 0)
             {
-                return TypedResults.BadRequest($"User {input.Name} already exists.");
+                return TypedResults.BadRequest($"Album {input.Name} already exists.");
             }
         }
         else
